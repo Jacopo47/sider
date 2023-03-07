@@ -14,7 +14,11 @@ class SerializationSuite extends munit.FunSuite {
     assertEquals(TypeSerialization().parse(head), Right(Seq("Hello")))
     assertEquals(TypeSerialization().parse(head :++ RN), Right(Seq("Hello")))
     assertEquals(TypeSerialization().parse(head :++ RN :++ tail), Right(Seq("Hello", "World")))
-    assertEquals(TypeSerialization().parse(s"Hello${RNs}World".getBytes().toSeq), Right(Seq("Hello", "World")))
-    assertEquals(TypeSerialization().parse(s"$$11${RNs}helloworld${RNs}".getBytes().toSeq), Right(Seq("$11", "helloworld")))
-  }
+    assertEquals(TypeSerialization().parse(s"Hello${RNs}World".toSeqOfBytes), Right(Seq("Hello", "World")))
+    assertEquals(TypeSerialization().parse(s"$$11${RNs}helloworld${RNs}".toSeqOfBytes), Right(Seq("$11", "helloworld")))
+
+    assertEquals(TypeSerialization().takeFirstElement(s"$$11${RNs}helloworld${RNs}".toSeqOfBytes.toList), "$11".toSeqOfBytes)
+    assertEquals(TypeSerialization().skip(s"$$11${RNs}helloworld${RNs}".toSeqOfBytes), s"helloworld${RNs}".toSeqOfBytes)
+
+    }
 }

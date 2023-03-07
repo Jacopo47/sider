@@ -3,6 +3,8 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import Serialization.N
 import Serialization.R
+import Identifiers.define
+import scala.annotation.tailrec
 
 object Serialization {
   val R = '\r'.toByte
@@ -20,14 +22,18 @@ object Serialization {
       input: Seq[Byte],
       charset: Charset = StandardCharsets.UTF_8
   ): Either[Throwable, E] =
-    TypeSerialization()
-      .parse(input, charset)
-      .map(e => (input.headOption, e))
-      .flatMap(e =>
-        e._1 match
-          case Identifiers.blob => Right(BlobString(e._2))
-          case _                => Left(Throwable("Type not found"))
-      )
+    input match
+      case head +: tail =>
+        define(head) match
+          case e: Simple =>
+            Right(SimpleString(tail))
+
+          case c: Complex =>
+            Right(BlobString(tail))
+
+          case a: Aggregate =>
+            Left(???)
+      case _ => Left(Throwable("Not implemented yet"))
 
 }
 
@@ -39,18 +45,36 @@ trait Serialization {
       charset: Charset = StandardCharsets.UTF_8
   ): Either[Throwable, Seq[String]] =
     Try {
-      aggregate(input.toList)
+      aggregate(input)
         .map(_.toArray)
         .map(e => String(e, charset))
     }.toEither
 
   def aggregate(
-      input: List[Byte],
+      input: Seq[Byte],
       accumulator: Seq[Seq[Byte]] = Seq.empty,
       element: Seq[Byte] = Seq.empty
-  ): Seq[Seq[Byte]] = input match
+  ): Seq[Seq[Byte]] = input.toList match
     case Nil            => accumulator :+ element
     case R :: N :: Nil  => aggregate(Nil, accumulator, element)
     case R :: N :: tail => aggregate(tail, accumulator :+ element, Seq.empty)
     case head :: tail   => aggregate(tail, accumulator, element :+ head)
+
+  def takeFirstElement(
+      input: Seq[Byte],
+      element: Seq[Byte] = Seq.empty
+  ): Seq[Byte] = input.toList match
+    case Nil            => element
+    case R :: N :: Nil  => takeFirstElement(Nil, element)
+    case R :: N :: tail => takeFirstElement(Nil, element)
+    case head :: tail   => takeFirstElement(tail, element :+ head)
+
+  def skip(
+      input: Seq[Byte],
+      element: Seq[Byte] = Seq.empty
+  ): Seq[Byte] = input.toList match
+    case Nil            => element
+    case R :: N :: Nil  => skip(Nil, Seq.empty)
+    case R :: N :: tail => skip(Nil, tail)
+    case head :: tail   => skip(tail, Seq.empty)
 }
