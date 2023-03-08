@@ -1,10 +1,13 @@
+package com.sider
+
+
 import scala.util.Try
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import Serialization.N
 import Serialization.R
-import Identifiers.define
 import scala.annotation.tailrec
+import com.sider.Identifiers.define
 
 object Serialization {
   val R = '\r'.toByte
@@ -25,14 +28,11 @@ object Serialization {
     input match
       case head +: tail =>
         define(head) match
-          case e: Simple =>
-            Right(SimpleString(tail))
+          case e: Simple => e.map(tail)
 
-          case c: Complex =>
-            Right(BlobString(tail))
+          case c: Complex => Right(BlobString(tail))
 
-          case a: Aggregate =>
-            Left(???)
+          case a: Aggregate => Left(???)
       case _ => Left(Throwable("Not implemented yet"))
 
 }
