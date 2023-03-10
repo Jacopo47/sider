@@ -8,7 +8,7 @@ import Serialization.RNs
 class TypesSuite extends munit.FunSuite {
 
   test("Blob String") {
-    val blob = Serialization.parseString(s"$$10${RNs}helloworld${RNs}") match
+    val blob = Serialization.readString(s"$$10${RNs}helloworld${RNs}") match
       case e: Either[Throwable, BlobString] => e
       case _ => Left(Throwable("Unexpected type"))
 
@@ -18,7 +18,7 @@ class TypesSuite extends munit.FunSuite {
 
     // BlobString must support strings with \r\n
     val blobWithRn =
-      Serialization.parseString(s"$$12${RNs}hello${RNs}world${RNs}") match
+      Serialization.readString(s"$$12${RNs}hello${RNs}world${RNs}") match
         case e: Either[Throwable, BlobString] => e
         case _ => Left(Throwable("Unexpected type"))
 
@@ -28,7 +28,7 @@ class TypesSuite extends munit.FunSuite {
   }
 
   test("Simple String") {
-    val test = Serialization.parseString(s"+hello world${RNs}") match
+    val test = Serialization.readString(s"+hello world${RNs}") match
       case e: Either[Throwable, SimpleString] => e
       case _ => Left(Throwable("Unexpected type"))
 
@@ -37,7 +37,7 @@ class TypesSuite extends munit.FunSuite {
   }
 
   test("Simple Error") {
-    val test = Serialization.parseString(
+    val test = Serialization.readString(
       s"-ERR this is the error description${RNs}"
     ) match
       case e: Either[Throwable, SimpleError] => e
@@ -51,7 +51,7 @@ class TypesSuite extends munit.FunSuite {
   }
 
   test("Number") {
-    val test = Serialization.parseString(s":1234${RNs}") match
+    val test = Serialization.readString(s":1234${RNs}") match
       case e: Either[Throwable, Number] => e
       case _                            => Left(Throwable("Unexpected type"))
 
@@ -59,7 +59,7 @@ class TypesSuite extends munit.FunSuite {
     assertEquals(test.flatMap(e => e.value), Right(1234))
   }
   test("Null") {
-    val test = Serialization.parseString(s"_${RNs}") match
+    val test = Serialization.readString(s"_${RNs}") match
       case e: Either[Throwable, Null] => e
       case _                          => Left(Throwable("Unexpected type"))
 
@@ -68,28 +68,28 @@ class TypesSuite extends munit.FunSuite {
   }
 
   test("Double") {
-    val test = Serialization.parseString(s",1.23${RNs}") match
+    val test = Serialization.readString(s",1.23${RNs}") match
       case e: Either[Throwable, Double] => e
       case _                          => Left(Throwable("Unexpected type"))
 
     assert(test.isRight)
     assertEquals(test.flatMap(e => e.value), Right(1.23))
 
-    assertEquals(Serialization.parseString(s",-inf${RNs}").flatMap(_.value), Right(scala.Double.MinValue))
-    assertEquals(Serialization.parseString(s",inf${RNs}").flatMap(_.value), Right(scala.Double.MaxValue))
+    assertEquals(Serialization.readString(s",-inf${RNs}").flatMap(_.value), Right(scala.Double.MinValue))
+    assertEquals(Serialization.readString(s",inf${RNs}").flatMap(_.value), Right(scala.Double.MaxValue))
 
   }
 
     test("Boolean") {
-    val test = Serialization.parseString(s"#t${RNs}") match
+    val test = Serialization.readString(s"#t${RNs}") match
       case e: Either[Throwable, Boolean] => e
       case _                          => Left(Throwable("Unexpected type"))
 
     assert(test.isRight)
     assertEquals(test.flatMap(e => e.value), Right(true))
 
-    assertEquals(Serialization.parseString(s"#f${RNs}").flatMap(_.value), Right(false))
-    assert(Serialization.parseString(s"#wrong${RNs}").flatMap(_.value).isLeft)
+    assertEquals(Serialization.readString(s"#f${RNs}").flatMap(_.value), Right(false))
+    assert(Serialization.readString(s"#wrong${RNs}").flatMap(_.value).isLeft)
 
   }
 }
