@@ -1,6 +1,6 @@
 package com.sider
 
-import com.sider.TypeSerialization
+import com.sider.Serialization
 import com.sider.{bytesToString, bytesToInt}
 import java.nio.charset.StandardCharsets
 
@@ -76,13 +76,13 @@ case class BlobString(raw: Seq[Byte]) extends Type[String] {
 
   override val identifier: Option[Byte] = Identifiers.BlobString
 
-  def length(): Either[Throwable, Int] = Right(TypeSerialization())
+  def length(): Either[Throwable, Int] = Right(Serialization)
     .map(_.takeFirstElement(raw.toList))
     .filterOrElse(_.nonEmpty, Throwable("Unable to define blob string length"))
     .map(bytesToInt)
 
   override lazy val value: Either[Throwable, String] = length()
-    .map(TypeSerialization().skip(raw).take(_))
+    .map(Serialization.skip(raw).take(_))
     .map(bytesToString)
 }
 
@@ -90,7 +90,7 @@ case class SimpleString(raw: Seq[Byte]) extends Type[String] {
   override val identifier: Option[Byte] = Identifiers.SimpleString
 
   override lazy val value: Either[Throwable, String] =
-    Right(TypeSerialization())
+    Right(Serialization)
       .map(_.takeFirstElement(raw.toList))
       .map(bytesToString)
 
@@ -100,7 +100,7 @@ case class SimpleError(raw: Seq[Byte]) extends Type[String] {
   override val identifier: Option[Byte] = Identifiers.SimpleError
 
   override lazy val value: Either[Throwable, String] =
-    Right(TypeSerialization())
+    Right(Serialization)
       .map(_.takeFirstElement(raw.toList))
       .map(bytesToString)
 }
@@ -109,7 +109,7 @@ case class Number(raw: Seq[Byte]) extends Type[Int] {
   override val identifier: Option[Byte] = Identifiers.Number
 
   override lazy val value: Either[Throwable, Int] =
-    Right(TypeSerialization())
+    Right(Serialization)
       .map(_.takeFirstElement(raw.toList))
       .map(bytesToInt)
 }
@@ -124,7 +124,7 @@ case class Double(raw: Seq[Byte]) extends Type[scala.Double] {
   override val identifier: Option[Byte] = Identifiers.Double
 
   override lazy val value: Either[Throwable, scala.Double] =
-    Right(TypeSerialization())
+    Right(Serialization)
       .map(_.takeFirstElement(raw.toList))
       .map(bytesToDouble)
 }
@@ -138,7 +138,7 @@ case class Boolean(raw: Seq[Byte]) extends Type[scala.Boolean] {
   val F = Some('f'.toByte)
 
   override lazy val value: Either[Throwable, scala.Boolean] =
-    Right(TypeSerialization())
+    Right(Serialization)
       .map(_.takeFirstElement(raw.toList))
       .map(_.headOption)
       .flatMap {

@@ -4,24 +4,25 @@ package com.sider
 import scala.util.Try
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
-import Serialization.N
-import Serialization.R
 import scala.annotation.tailrec
 import com.sider.Identifiers.define
 
+
+
 object Serialization {
+
   val R = '\r'.toByte
   val N = '\n'.toByte
   val RN = Seq(R, N)
   val RNs: String = new String(RN.toArray, StandardCharsets.UTF_8)
 
-  def parseString[E >: Type[?]](
+  def readString[E >: Type[?]](
       input: String,
       charset: Charset = StandardCharsets.UTF_8
   ): Either[Throwable, E] =
-    Serialization.parse(input.getBytes().toSeq, charset)
+    read(input.getBytes().toSeq, charset)
 
-  def parse[E >: Type[?]](
+  def read[E >: Type[?]](
       input: Seq[Byte],
       charset: Charset = StandardCharsets.UTF_8
   ): Either[Throwable, E] =
@@ -35,11 +36,6 @@ object Serialization {
           case a: Aggregate => Left(???)
       case _ => Left(Throwable("Not implemented yet"))
 
-}
-
-case class TypeSerialization() extends Serialization {}
-
-trait Serialization {
   def parse(
       input: Seq[Byte],
       charset: Charset = StandardCharsets.UTF_8
