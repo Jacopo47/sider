@@ -134,16 +134,17 @@ case class Boolean(raw: Seq[Byte]) extends Type[scala.Boolean] {
   override val identifier: Option[Byte] = Identifiers.Boolean
 
   // TODO - move to a companion object
-  val T = Seq('t'.toByte)
-  val F = Seq('f'.toByte)
+  val T = Some('t'.toByte)
+  val F = Some('f'.toByte)
 
   override lazy val value: Either[Throwable, scala.Boolean] =
     Right(TypeSerialization())
       .map(_.takeFirstElement(raw.toList))
-      .flatMap( e => e match {
+      .map(_.headOption)
+      .flatMap {
         case T => Right(true)
         case F => Right(false)
-        case _ => Left(Throwable(s"Unable to parse ${e} as boolean"))
-      })
+        case e => Left(Throwable(s"Unable to parse $e as boolean"))
+      }
       
 }
