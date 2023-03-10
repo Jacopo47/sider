@@ -11,6 +11,9 @@ extension (i: String) def toSeqOfBytes: Seq[Byte] = i.getBytes().toSeq
 extension (i: Seq[Byte])
   def bytesToString: String = String(i.toArray, StandardCharsets.UTF_8)
   def bytesToInt: Int = bytesToString.toInt // TODO - optimize it
+  def bytesToBigInt: BigInt = BigInt.apply(bytesToString) // TODO - optimize it
+  
+  def bytesToLong: Long = bytesToString.toLong
   def bytesToDouble: scala.Double = i match
     case StringExtensions.inf         => scala.Double.MaxValue
     case StringExtensions.negativeInf => scala.Double.MinValue
