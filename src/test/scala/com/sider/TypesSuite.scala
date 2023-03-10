@@ -8,7 +8,7 @@ import Serialization.RNs
 class TypesSuite extends munit.FunSuite {
 
   test("Blob String") {
-    val blob = Serialization.readString(s"$$10${RNs}helloworld${RNs}") match
+    val blob = Serialization.readString(s"$$10${RNs}helloworld$RNs") match
       case e: Either[Throwable, BlobString] => e
       case _ => Left(Throwable("Unexpected type"))
 
@@ -18,7 +18,7 @@ class TypesSuite extends munit.FunSuite {
 
     // BlobString must support strings with \r\n
     val blobWithRn =
-      Serialization.readString(s"$$12${RNs}hello${RNs}world${RNs}") match
+      Serialization.readString(s"$$12${RNs}hello${RNs}world$RNs") match
         case e: Either[Throwable, BlobString] => e
         case _ => Left(Throwable("Unexpected type"))
 
@@ -28,7 +28,7 @@ class TypesSuite extends munit.FunSuite {
   }
 
   test("Simple String") {
-    val test = Serialization.readString(s"+hello world${RNs}") match
+    val test = Serialization.readString(s"+hello world$RNs") match
       case e: Either[Throwable, SimpleString] => e
       case _ => Left(Throwable("Unexpected type"))
 
@@ -38,7 +38,7 @@ class TypesSuite extends munit.FunSuite {
 
   test("Simple Error") {
     val test = Serialization.readString(
-      s"-ERR this is the error description${RNs}"
+      s"-ERR this is the error description$RNs"
     ) match
       case e: Either[Throwable, SimpleError] => e
       case _ => Left(Throwable("Unexpected type"))
@@ -51,15 +51,15 @@ class TypesSuite extends munit.FunSuite {
   }
 
   test("Number") {
-    val test = Serialization.readString(s":1234${RNs}") match
+    val test = Serialization.readString(s":1234$RNs") match
       case e: Either[Throwable, Number] => e
       case _                            => Left(Throwable("Unexpected type"))
 
     assert(test.isRight)
-    assertEquals(test.flatMap(e => e.value), Right(1234))
+    assertEquals(test.flatMap(e => e.value), Right(1234L))
   }
   test("Null") {
-    val test = Serialization.readString(s"_${RNs}") match
+    val test = Serialization.readString(s"_$RNs") match
       case e: Either[Throwable, Null] => e
       case _                          => Left(Throwable("Unexpected type"))
 
@@ -68,28 +68,49 @@ class TypesSuite extends munit.FunSuite {
   }
 
   test("Double") {
-    val test = Serialization.readString(s",1.23${RNs}") match
+    val test = Serialization.readString(s",1.23$RNs") match
       case e: Either[Throwable, Double] => e
-      case _                          => Left(Throwable("Unexpected type"))
+      case _                            => Left(Throwable("Unexpected type"))
 
     assert(test.isRight)
     assertEquals(test.flatMap(e => e.value), Right(1.23))
 
-    assertEquals(Serialization.readString(s",-inf${RNs}").flatMap(_.value), Right(scala.Double.MinValue))
-    assertEquals(Serialization.readString(s",inf${RNs}").flatMap(_.value), Right(scala.Double.MaxValue))
+    assertEquals(
+      Serialization.readString(s",-inf$RNs").flatMap(_.value),
+      Right(scala.Double.MinValue)
+    )
+    assertEquals(
+      Serialization.readString(s",inf$RNs").flatMap(_.value),
+      Right(scala.Double.MaxValue)
+    )
 
   }
 
-    test("Boolean") {
-    val test = Serialization.readString(s"#t${RNs}") match
+  test("Boolean") {
+    val test = Serialization.readString(s"#t$RNs") match
       case e: Either[Throwable, Boolean] => e
-      case _                          => Left(Throwable("Unexpected type"))
+      case _                             => Left(Throwable("Unexpected type"))
 
     assert(test.isRight)
     assertEquals(test.flatMap(e => e.value), Right(true))
 
-    assertEquals(Serialization.readString(s"#f${RNs}").flatMap(_.value), Right(false))
-    assert(Serialization.readString(s"#wrong${RNs}").flatMap(_.value).isLeft)
+    assertEquals(
+      Serialization.readString(s"#f$RNs").flatMap(_.value),
+      Right(false)
+    )
+    assert(Serialization.readString(s"#wrong$RNs").flatMap(_.value).isLeft)
+
+  }
+
+  test("Big Number") {
+    val test = Serialization.readString(s"(3492890328409238509324850943850943825024385$RNs") match
+      case e: Either[Throwable, BigNumber] => e
+      case _                             => Left(Throwable("Unexpected type"))
+
+    assert(test.isRight)
+    assertEquals(test.flatMap(e => e.value), Right(BigInt.apply("3492890328409238509324850943850943825024385")))
+
+    assertEquals(Serialization.readString(s"(19$RNs").flatMap(_.value), Right(19))
 
   }
 }

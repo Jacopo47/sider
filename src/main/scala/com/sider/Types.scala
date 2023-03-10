@@ -33,7 +33,7 @@ case class Simple(identifier: Option[Byte]) extends Definition {
       case Identifiers.Null         => Right(Null(input))
       case Identifiers.Double       => Right(Double(input))
       case Identifiers.Boolean      => Right(Boolean(input))
-      case Identifiers.BigNumber    => ???
+      case Identifiers.BigNumber    => Right(BigNumber(input))
       case _                        => Left(MissingTypeMapping())
 
 }
@@ -105,13 +105,13 @@ case class SimpleError(raw: Seq[Byte]) extends Type[String] {
       .map(bytesToString)
 }
 
-case class Number(raw: Seq[Byte]) extends Type[Int] {
+case class Number(raw: Seq[Byte]) extends Type[Long] {
   override val identifier: Option[Byte] = Identifiers.Number
 
-  override lazy val value: Either[Throwable, Int] =
+  override lazy val value: Either[Throwable, Long] =
     Right(Serialization)
       .map(_.takeFirstElement(raw.toList))
-      .map(bytesToInt)
+      .map(bytesToLong)
 }
 
 case class Null(raw: Seq[Byte]) extends Type[String] {
@@ -133,18 +133,27 @@ case class Double(raw: Seq[Byte]) extends Type[scala.Double] {
 case class Boolean(raw: Seq[Byte]) extends Type[scala.Boolean] {
   override val identifier: Option[Byte] = Identifiers.Boolean
 
-  // TODO - move to a companion object
-  val T = Some('t'.toByte)
-  val F = Some('f'.toByte)
-
   override lazy val value: Either[Throwable, scala.Boolean] =
     Right(Serialization)
       .map(_.takeFirstElement(raw.toList))
       .map(_.headOption)
       .flatMap {
-        case T => Right(true)
-        case F => Right(false)
+        case Boolean.T => Right(true)
+        case Boolean.F => Right(false)
         case e => Left(Throwable(s"Unable to parse $e as boolean"))
       }
       
 }
+
+case class BigNumber(raw: Seq[Byte]) extends Type[scala.BigInt] {
+  override val identifier: Option[Byte] = Identifiers.BigNumber
+
+  override lazy val value: Either[Throwable, scala.BigInt] =
+    Right(Serialization)
+      .map(_.takeFirstElement(raw.toList))
+      .map(bytesToBigInt)
+}
+
+object Boolean:
+  val T = Some('t'.toByte)
+  val F = Some('f'.toByte)

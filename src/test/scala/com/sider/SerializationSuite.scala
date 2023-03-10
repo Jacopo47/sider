@@ -3,6 +3,7 @@ package com.sider
 import com.sider.Serialization.RN
 import com.sider.Serialization.RNs
 
+import com.sider.Serialization
 class SerializationSuite extends munit.FunSuite {
   test("TypeSerialization") {
     val head = "Hello".getBytes().toList
