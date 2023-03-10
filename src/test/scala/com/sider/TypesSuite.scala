@@ -1,3 +1,5 @@
+package com.sider
+
 import com.sider.Serialization
 import com.sider.{BlobString, SimpleString, SimpleError, Number, Null, Double}
 import Serialization.RN
@@ -75,6 +77,19 @@ class TypesSuite extends munit.FunSuite {
 
     assertEquals(Serialization.parseString(s",-inf${RNs}").flatMap(_.value), Right(scala.Double.MinValue))
     assertEquals(Serialization.parseString(s",inf${RNs}").flatMap(_.value), Right(scala.Double.MaxValue))
+
+  }
+
+    test("Boolean") {
+    val test = Serialization.parseString(s"#t${RNs}") match
+      case e: Either[Throwable, Boolean] => e
+      case _                          => Left(Throwable("Unexpected type"))
+
+    assert(test.isRight)
+    assertEquals(test.flatMap(e => e.value), Right(true))
+
+    assertEquals(Serialization.parseString(s"#f${RNs}").flatMap(_.value), Right(false))
+    assert(Serialization.parseString(s"#wrong${RNs}").flatMap(_.value).isLeft)
 
   }
 }

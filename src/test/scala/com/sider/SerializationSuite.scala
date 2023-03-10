@@ -1,8 +1,7 @@
+package com.sider
 
-import com.sider.{Serialization, TypeSerialization}
-import com.sider.toSeqOfBytes
-import Serialization.RN
-import Serialization.RNs
+import com.sider.Serialization.RN
+import com.sider.Serialization.RNs
 
 class SerializationSuite extends munit.FunSuite {
   test("TypeSerialization") {

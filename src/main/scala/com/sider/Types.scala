@@ -32,7 +32,7 @@ case class Simple(identifier: Option[Byte]) extends Definition {
       case Identifiers.Number       => Right(Number(input))
       case Identifiers.Null         => Right(Null(input))
       case Identifiers.Double       => Right(Double(input))
-      case Identifiers.Boolean      => ???
+      case Identifiers.Boolean      => Right(Boolean(input))
       case Identifiers.BigNumber    => ???
       case _                        => Left(MissingTypeMapping())
 
@@ -121,10 +121,29 @@ case class Null(raw: Seq[Byte]) extends Type[String] {
 }
 
 case class Double(raw: Seq[Byte]) extends Type[scala.Double] {
-  override val identifier: Option[Byte] = Identifiers.Number
+  override val identifier: Option[Byte] = Identifiers.Double
 
   override lazy val value: Either[Throwable, scala.Double] =
     Right(TypeSerialization())
       .map(_.takeFirstElement(raw.toList))
       .map(bytesToDouble)
+}
+
+
+case class Boolean(raw: Seq[Byte]) extends Type[scala.Boolean] {
+  override val identifier: Option[Byte] = Identifiers.Boolean
+
+  // TODO - move to a companion object
+  val T = Seq('t'.toByte)
+  val F = Seq('f'.toByte)
+
+  override lazy val value: Either[Throwable, scala.Boolean] =
+    Right(TypeSerialization())
+      .map(_.takeFirstElement(raw.toList))
+      .flatMap( e => e match {
+        case T => Right(true)
+        case F => Right(false)
+        case _ => Left(Throwable(s"Unable to parse ${e} as boolean"))
+      })
+      
 }
