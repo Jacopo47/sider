@@ -31,7 +31,7 @@ object Serialization {
         define(head) match
           case e: Simple => e.map(tail)
 
-          case c: Complex => Right(BlobString(tail))
+          case c: Complex => c.map(tail)
 
           case a: Aggregate => Left(???)
       case _ => Left(Throwable("Not implemented yet"))

@@ -27,6 +27,26 @@ class TypesSuite extends munit.FunSuite {
     assertEquals(blobWithRn.flatMap(e => e.length()), Right(12))
   }
 
+    test("Blob error") {
+    val blob = Serialization.readString(s"!21${RNs}SYNTAX invalid syntax${RNs}") match
+      case e: Either[Throwable, BlobError] => e
+      case _ => Left(Throwable("Unexpected type"))
+
+    assert(blob.isRight)
+    assertEquals(blob.flatMap(e => e.value), Right("SYNTAX invalid syntax"))
+    assertEquals(blob.flatMap(e => e.length()), Right(21))
+  }
+
+    test("Verbatim String") {
+    val blob = Serialization.readString(s"=15${RNs}txt:Some string${RNs}") match
+      case e: Either[Throwable, VerbatimString] => e
+      case _ => Left(Throwable("Unexpected type"))
+
+    assert(blob.isRight)
+    assertEquals(blob.flatMap(e => e.value), Right("txt:Some string"))
+    assertEquals(blob.flatMap(e => e.length()), Right(15))
+  }
+
   test("Simple String") {
     val test = Serialization.readString(s"+hello world$RNs") match
       case e: Either[Throwable, SimpleString] => e
