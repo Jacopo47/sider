@@ -159,27 +159,97 @@ class TypesSuite extends munit.FunSuite {
   test("Array") {
     val test = Serialization.readString(s"*3$RNs:1$RNs:2$RNs:3$RNs") match
       case e: Either[Throwable, Array] => e
-      case _                               => Left(Throwable("Unexpected type"))
+      case _                           => Left(Throwable("Unexpected type"))
 
     val a = test.flatMap(_.bytes)
     assertEquals(test.flatMap(_.length), Right(16))
     assertEquals(test.flatMap(e => e.value), Right(Seq(1, 2, 3)))
-    assertEquals(Serialization.readString(s"*4$RNs:1$RNs:2$RNs:3$RNs+Helloworld").flatMap(_.value), Right(Seq(1, 2, 3, "Helloworld")))
+    assertEquals(
+      Serialization
+        .readString(s"*4$RNs:1$RNs:2$RNs:3$RNs+Helloworld")
+        .flatMap(_.value),
+      Right(Seq(1, 2, 3, "Helloworld"))
+    )
 
     val blobWithEndCharInside = s"$$12${RNs}hello${RNs}world"
-    assertEquals(Serialization.readString(s"*5$RNs${blobWithEndCharInside}$RNs:1$RNs:2$RNs:3$RNs+Helloworld").flatMap(_.value), Right(Seq(s"hello${RNs}world", 1, 2, 3, "Helloworld")))
-
+    assertEquals(
+      Serialization
+        .readString(
+          s"*5$RNs${blobWithEndCharInside}$RNs:1$RNs:2$RNs:3$RNs+Helloworld"
+        )
+        .flatMap(_.value),
+      Right(Seq(s"hello${RNs}world", 1, 2, 3, "Helloworld"))
+    )
 
     // Testing nested Arrays
-    assertEquals(Serialization.readString(s"*1$RNs*3$RNs:1$RNs:2$RNs:3$RNs").flatMap(_.value), Right(Seq(Seq(1,2,3))))
-    val nested = Serialization.readString(s"*2$RNs*3$RNs:1${RNs}$$5${RNs}hello$RNs:2${RNs}#f$RNs")
+    assertEquals(
+      Serialization
+        .readString(s"*1$RNs*3$RNs:1$RNs:2$RNs:3$RNs")
+        .flatMap(_.value),
+      Right(Seq(Seq(1, 2, 3)))
+    )
+    val nested = Serialization.readString(
+      s"*2$RNs*3$RNs:1${RNs}$$5${RNs}hello$RNs:2${RNs}#f$RNs"
+    )
     assertEquals(nested.flatMap(_.length), Right(31))
-    assertEquals(nested.flatMap(_.value), Right(Seq(Seq(1,"hello",2), false)))
+    assertEquals(nested.flatMap(_.value), Right(Seq(Seq(1, "hello", 2), false)))
 
-
-    
     // Testing edge cases
-    assertEquals(Serialization.readString(s"*0$RNs$RNs").flatMap(_.value), Right(Seq.empty))
+    assertEquals(
+      Serialization.readString(s"*0$RNs$RNs").flatMap(_.value),
+      Right(Seq.empty)
+    )
+
+  }
+
+  test("Map") {
+
+    val test = Serialization.readString(
+      s"%2${RNs}+first${RNs}:1${RNs}+second${RNs}:2${RNs}"
+    ) match
+      case e: Either[Throwable, Map] => e
+      case _                         => Left(Throwable("Unexpected type"))
+
+    val a = test.flatMap(_.bytes)
+    assertEquals(test.flatMap(_.length), Right(29))
+    assertEquals(
+      test.flatMap(e => e.value),
+      Right(scala.collection.immutable.Map("first" -> 1, "second" -> 2))
+    )
+
+    val blobWithEndCharInside = s"$$12${RNs}hello${RNs}world"
+    assertEquals(
+      Serialization
+        .readString(
+          s"%3$RNs:1$RNs${blobWithEndCharInside}$RNs:1$RNs:2$RNs+Helloworld$RNs:3$RNs"
+        )
+        .flatMap(_.value),
+      Right(scala.collection.immutable.Map(1 -> s"hello${RNs}world", 1 -> 2, "Helloworld" -> 3))
+    )
+
+     // Testing nested Arrays
+    assertEquals(
+      Serialization
+        .readString(s"%1$RNs:0$RNs*3$RNs:1$RNs:2$RNs:3$RNs")
+        .flatMap(_.value),
+      Right(scala.collection.immutable.Map(0 -> Seq(1, 2, 3)))
+    )
+    val nested = Serialization.readString(
+      s"%2$RNs:1$RNs*3$RNs:1${RNs}$$5${RNs}hello$RNs:2${RNs}:2$RNs#f$RNs"
+    )
+    assertEquals(nested.flatMap(_.length), Right(39))
+    assertEquals(nested.flatMap(_.value), Right(scala.collection.immutable.Map(1 -> Seq(1, "hello", 2), 2 -> false)))
+
+    // Testing edge cases
+    assertEquals(
+      Serialization.readString(s"%0$RNs$RNs").flatMap(_.value),
+      Right(scala.collection.immutable.Map.empty)
+    )
+
+    // Wrong format map that does not present an even number of elements
+    assert(
+     Serialization.readString(s"%1$RNs:2$RNs").flatMap(_.value).isLeft,
+    )
 
   }
 }
