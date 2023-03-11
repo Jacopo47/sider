@@ -20,7 +20,7 @@ object Serialization {
       input: String,
       charset: Charset = StandardCharsets.UTF_8
   ): Either[Throwable, E] =
-    read(input.getBytes().toSeq, charset)
+    read(input.toSeqOfBytes, charset)
 
   def read[E >: Type[?]](
       input: Seq[Byte],
@@ -33,7 +33,7 @@ object Serialization {
 
           case c: Complex => c.map(tail)
 
-          case a: Aggregate => Left(???)
+          case a: Aggregate => a.map(tail)
       case _ => Left(Throwable("Not implemented yet"))
 
   def parse(
