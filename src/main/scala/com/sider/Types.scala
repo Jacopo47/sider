@@ -4,6 +4,30 @@ import com.sider.Serialization
 import com.sider.{bytesToString, bytesToInt}
 import java.nio.charset.StandardCharsets
 
+object Identifiers:
+  val BlobString = Some('$'.toByte)
+  val BlobError = Some('!'.toByte)
+  val VerbatimString = Some('='.toByte)
+
+  val Array = Some('*'.toByte)
+  val Map = Some('%'.toByte)
+  val Set = Some('~'.toByte)
+
+  val SimpleString = Some('+'.toByte)
+  val SimpleError = Some('-'.toByte)
+  val Number = Some(':'.toByte)
+  val Null = Some('_'.toByte)
+  val Double = Some(','.toByte)
+  val Boolean = Some('#'.toByte)
+  val BigNumber = Some('('.toByte)
+
+  def define(input: Byte): Definition = Some(input) match
+    case BlobString | BlobError | VerbatimString => Complex(Some(input))
+    case Array | Map | Set                       => Aggregate(Some(input))
+    case _                                       => Simple(Some(input))
+
+case class ElementNotFound() extends Throwable {}
+
 sealed trait Type[A]:
   val identifier: Option[Byte]
   val raw: Seq[Byte]
@@ -39,38 +63,22 @@ case class Simple(identifier: Option[Byte]) extends Definition {
 }
 case class Complex(identifier: Option[Byte]) extends Definition {
 
-  override def map(input: Seq[Byte]): Either[Throwable, Type[?]] = ???
-
+  override def map(input: Seq[Byte]): Either[Throwable, Type[?]] =
+    identifier match {
+      case Identifiers.BlobString => Right(BlobString(input))
+      case Identifiers.BlobError => Right(BlobError(input))
+      case Identifiers.VerbatimString => Right(VerbatimString(input))
+      case _ => Left(MissingTypeMapping())
+    }
 }
+
 case class Aggregate(identifier: Option[Byte]) extends Definition {
 
   override def map(input: Seq[Byte]): Either[Throwable, Type[?]] = ???
 
 }
 
-object Identifiers:
-  val BlobString = Some('$'.toByte)
-  val BlobError = Some('!'.toByte)
-  val VerbatimString = Some('='.toByte)
 
-  val Array = Some('*'.toByte)
-  val Map = Some('%'.toByte)
-  val Set = Some('~'.toByte)
-
-  val SimpleString = Some('+'.toByte)
-  val SimpleError = Some('-'.toByte)
-  val Number = Some(':'.toByte)
-  val Null = Some('_'.toByte)
-  val Double = Some(','.toByte)
-  val Boolean = Some('#'.toByte)
-  val BigNumber = Some('('.toByte)
-
-  def define(input: Byte): Definition = Some(input) match
-    case BlobString | BlobError | VerbatimString => Complex(Some(input))
-    case Array | Map | Set                       => Aggregate(Some(input))
-    case _                                       => Simple(Some(input))
-
-case class ElementNotFound() extends Throwable {}
 
 case class BlobString(raw: Seq[Byte]) extends Type[String] {
 
@@ -78,7 +86,35 @@ case class BlobString(raw: Seq[Byte]) extends Type[String] {
 
   def length(): Either[Throwable, Int] = Right(Serialization)
     .map(_.takeFirstElement(raw.toList))
-    .filterOrElse(_.nonEmpty, Throwable("Unable to define blob string length"))
+    .filterOrElse(_.nonEmpty, Throwable("Unable to define length"))
+    .map(bytesToInt)
+
+  override lazy val value: Either[Throwable, String] = length()
+    .map(Serialization.skip(raw).take(_))
+    .map(bytesToString)
+}
+
+case class BlobError(raw: Seq[Byte]) extends Type[String] {
+
+  override val identifier: Option[Byte] = Identifiers.BlobError
+
+  def length(): Either[Throwable, Int] = Right(Serialization)
+    .map(_.takeFirstElement(raw.toList))
+    .filterOrElse(_.nonEmpty, Throwable("Unable to define length"))
+    .map(bytesToInt)
+
+  override lazy val value: Either[Throwable, String] = length()
+    .map(Serialization.skip(raw).take(_))
+    .map(bytesToString)
+}
+
+case class VerbatimString(raw: Seq[Byte]) extends Type[String] {
+
+  override val identifier: Option[Byte] = Identifiers.VerbatimString
+
+  def length(): Either[Throwable, Int] = Right(Serialization)
+    .map(_.takeFirstElement(raw.toList))
+    .filterOrElse(_.nonEmpty, Throwable("Unable to define length"))
     .map(bytesToInt)
 
   override lazy val value: Either[Throwable, String] = length()
@@ -130,6 +166,10 @@ case class Double(raw: Seq[Byte]) extends Type[scala.Double] {
 }
 
 
+object Boolean:
+  val T = Some('t'.toByte)
+  val F = Some('f'.toByte)
+
 case class Boolean(raw: Seq[Byte]) extends Type[scala.Boolean] {
   override val identifier: Option[Byte] = Identifiers.Boolean
 
@@ -154,6 +194,3 @@ case class BigNumber(raw: Seq[Byte]) extends Type[scala.BigInt] {
       .map(bytesToBigInt)
 }
 
-object Boolean:
-  val T = Some('t'.toByte)
-  val F = Some('f'.toByte)
