@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets
 import com.sider.Serialization.RN
 import com.sider.Serialization.R
 import com.sider.Serialization.N
+import scala.collection.Map
 
 object Identifiers {
   val BlobString = Some('$'.toByte)
@@ -75,6 +76,15 @@ sealed trait ComplexType extends Type[String] {
 }
 
 sealed trait AggregateType[A] extends Type[A] {
+
+  override lazy val bytes: Either[Throwable, Seq[Byte]] = types
+    .getOrElse(Seq.empty)
+    .map(_.bytes)
+    .partitionMap(identity) match {
+    case (Nil, ok) => Right(ok flatMap (_.toSeq))
+    case (ko, _)   => Left(AggregateTypeNotParsable())
+  } map (identifier.get +: valueLength.getOrElse(Seq.empty) :++ RN :++ _)
+
   lazy val nOfElements: Either[Throwable, Int] = valueLength
     .map(bytesToInt)
 
@@ -142,20 +152,13 @@ case class Aggregate(identifier: Option[Byte]) extends Definition {
   override def map(input: Seq[Byte]): Either[Throwable, Type[?]] =
     identifier match {
       case Identifiers.Array => Right(Array(input))
+      case Identifiers.Map => Right(Map(input))
       case _                 => Left(MissingTypeMapping())
     }
 
 }
 
 case class Array(raw: Seq[Byte]) extends AggregateType[Seq[Any]] {
-
-  override lazy val bytes: Either[Throwable, Seq[Byte]] = types
-    .getOrElse(Seq.empty)
-    .map(_.bytes)
-    .partitionMap(identity) match {
-    case (Nil, ok) => Right(ok flatMap (_.toSeq))
-    case (ko, _)   => Left(AggregateTypeNotParsable())
-  } map (identifier.get +: valueLength.getOrElse(Seq.empty) :++ RN :++ _)
 
   override val identifier: Option[Byte] = Identifiers.Array
 
@@ -164,6 +167,21 @@ case class Array(raw: Seq[Byte]) extends AggregateType[Seq[Any]] {
     */
   override lazy val value: Either[Throwable, Seq[Any]] = types map {
     _.map(_.value.toOption).filter(_.isDefined).map(_.get)
+  }
+
+}
+
+case class Map(raw: Seq[Byte]) extends AggregateType[scala.collection.immutable.Map[Any, Any]] {
+
+  override val identifier: Option[Byte] = Identifiers.Array
+
+  override lazy val nOfElements: Either[Throwable, Int] = valueLength.map(bytesToInt).map(_ * 2)
+
+  /** This method is a bit optimistic because is filtering await all failed
+    * types without any kind of evidence
+    */
+  override lazy val value: Either[Throwable, scala.collection.immutable.Map[Any, Any]] = types map {
+    _.map(_.value.toOption).filter(_.isDefined).map(_.get).grouped(2).map(e => e.head -> e.last).toMap
   }
 
 }
