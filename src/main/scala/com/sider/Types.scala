@@ -152,7 +152,8 @@ case class Aggregate(identifier: Option[Byte]) extends Definition {
   override def map(input: Seq[Byte]): Either[Throwable, Type[?]] =
     identifier match {
       case Identifiers.Array => Right(Array(input))
-      case Identifiers.Map => Right(Map(input))
+      case Identifiers.Map   => Right(Map(input))
+      case Identifiers.Set   => Right(Set(input))
       case _                 => Left(MissingTypeMapping())
     }
 
@@ -171,18 +172,45 @@ case class Array(raw: Seq[Byte]) extends AggregateType[Seq[Any]] {
 
 }
 
-case class Map(raw: Seq[Byte]) extends AggregateType[scala.collection.immutable.Map[Any, Any]] {
+case class Set(raw: Seq[Byte])
+    extends AggregateType[scala.collection.immutable.Set[Any]] {
 
   override val identifier: Option[Byte] = Identifiers.Array
-
-  override lazy val nOfElements: Either[Throwable, Int] = valueLength.map(bytesToInt).map(_ * 2)
 
   /** This method is a bit optimistic because is filtering await all failed
     * types without any kind of evidence
     */
-  override lazy val value: Either[Throwable, scala.collection.immutable.Map[Any, Any]] = types map {
-    _.map(_.value.toOption).filter(_.isDefined).map(_.get).grouped(2).map(e => e.head -> e.last).toMap
+  override lazy val value
+      : Either[Throwable, scala.collection.immutable.Set[Any]] = types map {
+    _.map(_.value.toOption)
+      .filter(_.isDefined)
+      .map(_.get)
+      .toSet
   }
+
+}
+
+case class Map(raw: Seq[Byte])
+    extends AggregateType[scala.collection.immutable.Map[Any, Any]] {
+
+  override val identifier: Option[Byte] = Identifiers.Map
+
+  override lazy val nOfElements: Either[Throwable, Int] =
+    valueLength.map(bytesToInt).map(_ * 2)
+
+  /** This method is a bit optimistic because is filtering await all failed
+    * types without any kind of evidence
+    */
+  override lazy val value
+      : Either[Throwable, scala.collection.immutable.Map[Any, Any]] =
+    types map {
+      _.map(_.value.toOption)
+        .filter(_.isDefined)
+        .map(_.get)
+        .grouped(2)
+        .map(e => e.head -> e.last)
+        .toMap
+    }
 
 }
 
