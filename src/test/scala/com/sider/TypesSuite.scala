@@ -4,6 +4,7 @@ import com.sider.Serialization
 import com.sider.{BlobString, SimpleString, SimpleError, Number, Null, Double}
 import Serialization.RN
 import Serialization.RNs
+import org.w3c.dom.Attr
 
 class TypesSuite extends munit.FunSuite {
 
@@ -198,6 +199,27 @@ class TypesSuite extends munit.FunSuite {
       Serialization.readString(s"*0$RNs$RNs").flatMap(_.value),
       Right(Seq.empty)
     )
+
+  }
+
+  test ("Attribute") {    
+    val test = Serialization.readString(
+      s"|1$RNs+key-popularity$RNs%2$RNs$$1${RNs}a$RNs,0.1923$RNs$$1${RNs}b$RNs,0.0012$RNs*2$RNs:2039123$RNs:9543892$RNs"
+    ) match
+      case e: Either[Throwable, Attribute] => e
+      case _                         => Left(Throwable("Unexpected type"))
+
+    assertEquals(test.flatMap(_.length), Right(81))
+    assertEquals(
+      test.flatMap(e => e.value),
+      Right(Seq(2039123, 9543892))
+    )
+
+    assertEquals(
+      test.flatMap(e => e.attributes),
+      Right(scala.collection.immutable.Map("key-popularity" -> scala.collection.immutable.Map("a" -> 0.1923, "b" -> 0.0012)))
+    )
+
 
   }
 
