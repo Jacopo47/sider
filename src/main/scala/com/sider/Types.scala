@@ -16,6 +16,7 @@ object Identifiers {
   val Array = Some('*'.toByte)
   val Map = Some('%'.toByte)
   val Set = Some('~'.toByte)
+  val Attribute = Some('|'.toByte)
 
   val SimpleString = Some('+'.toByte)
   val SimpleError = Some('-'.toByte)
@@ -27,7 +28,7 @@ object Identifiers {
 
   def define(input: Byte): Definition = Some(input) match
     case BlobString | BlobError | VerbatimString => Complex(Some(input))
-    case Array | Map | Set                       => Aggregate(Some(input))
+    case Array | Map | Set | Attribute           => Aggregate(Some(input))
     case _                                       => Simple(Some(input))
 }
 
@@ -45,13 +46,6 @@ sealed trait Type[A]:
   lazy val length: Either[Throwable, Int] = bytes.map(_.size)
   lazy val value: Either[Throwable, A]
   lazy val bytes: Either[Throwable, Seq[Byte]]
-
-  def replaceIdentifier(
-      input: Option[String],
-      identifier: Option[Byte]
-  ): Option[String] = identifier match
-    case Some(i) => input.map(e => e.replace(i.toChar, 0.toChar).trim())
-    case None    => input
 
 sealed trait SimpleType[A] extends Type[A] {
   lazy val bytes: Either[Throwable, Seq[Byte]] = Right(Serialization)
@@ -149,12 +143,15 @@ case class Complex(identifier: Option[Byte]) extends Definition {
 
 case class Aggregate(identifier: Option[Byte]) extends Definition {
 
+  val app = Identifiers.Attribute
+
   override def map(input: Seq[Byte]): Either[Throwable, Type[?]] =
     identifier match {
-      case Identifiers.Array => Right(Array(input))
-      case Identifiers.Map   => Right(Map(input))
-      case Identifiers.Set   => Right(Set(input))
-      case _                 => Left(MissingTypeMapping())
+      case Identifiers.Array     => Right(Array(input))
+      case Identifiers.Map       => Right(Map(input))
+      case Identifiers.Set       => Right(Set(input))
+      case Identifiers.Attribute => Right(Attribute(input))
+      case _                     => Left(MissingTypeMapping())
     }
 
 }
@@ -205,6 +202,38 @@ case class Map(raw: Seq[Byte])
       : Either[Throwable, scala.collection.immutable.Map[Any, Any]] =
     types map {
       _.map(_.value.toOption)
+        .filter(_.isDefined)
+        .map(_.get)
+        .grouped(2)
+        .map(e => e.head -> e.last)
+        .toMap
+    }
+
+}
+
+case class Attribute(raw: Seq[Byte]) extends AggregateType[Any] {
+
+  override val identifier: Option[Byte] = Identifiers.Map
+
+  override lazy val nOfElements: Either[Throwable, Int] =
+    valueLength.map(bytesToInt).map(_ * 2 + 1)
+
+  /** This method is a bit optimistic because is filtering await all failed
+    * types without any kind of evidence
+    */
+  override lazy val value: Either[Throwable, Any] =
+    types map {
+      _.lastOption
+        .map(_.value.toOption)
+        .filter(_.isDefined)
+        .map(_.get)
+        .getOrElse(Left(AggregateTypeNotParsable()))
+    }
+
+  lazy val attributes: Either[Throwable, scala.collection.immutable.Map[Any, Any]] =
+    types map {
+      _.dropRight(1) // Drop last that it's the value for this type
+        .map(_.value.toOption)
         .filter(_.isDefined)
         .map(_.get)
         .grouped(2)
