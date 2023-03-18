@@ -5,9 +5,8 @@ import org.testcontainers.utility.DockerImageName
 import org.testcontainers.containers.wait.strategy.Wait
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
-import cats.effect.IO.asyncForIO
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
+import com.sider.toSeqOfBytes
+import com.sider.bytesToString
 
 class RedisServer
     extends GenericContainer[RedisServer](DockerImageName.parse("redis")) {
@@ -26,13 +25,13 @@ class TCPClientSuite extends munit.FunSuite {
 
   override val munitTimeout = Duration(15, "s")
 
-  //override def beforeAll(): Unit = redisServer.start()
+  // override def beforeAll(): Unit = redisServer.start()
 
   test("Echo") {
-      new Fs2Client(Some("localhost"), Some(6379))
-        .client.compile.drain.unsafeRunSync()
-
-      assert(true)
-
+    Future {
+      val client = new TCPClient(Some("localhost"), Some(6379))
+      val res = client.gossip("*1\r\n$4\r\nPING\r\n".toSeqOfBytes)
+      assertEquals(res map { _.bytesToString }, Right("PONG"))
+    }
   }
 }

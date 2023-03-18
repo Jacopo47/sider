@@ -1,84 +1,57 @@
 package com.sider.network
 
-import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.channel.ChannelHandlerContext
-import io.netty.buffer.ByteBuf
-import scala.util.Try
-import com.sider.bytesToString
-import io.netty.channel.EventLoopGroup
-import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.bootstrap.Bootstrap
-import io.netty.channel.socket.nio.NioSocketChannel
-import io.netty.channel.ChannelOption
-import io.netty.channel.ChannelInitializer
-import io.netty.channel.socket.SocketChannel
-import io.netty.channel.ChannelFuture
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
+import java.net.Socket
+import scala.util.Try
+import java.io.InputStream
+import com.sider.Identifiers
+import com.sider.Simple
+import com.sider.Serialization.RN
+import com.sider.Serialization.R
+import com.sider.Serialization.N
 
 class TCPClient(
     val host: Option[String] = Some("localhost"),
     val port: Option[Int] = Some(6379)
-) {
-
-    val logger: Logger = LoggerFactory.getLogger(classOf[TCPClient])
-
-    val worker: EventLoopGroup = new NioEventLoopGroup()
-
-    Try {
-        val bootstrap = new Bootstrap()
-        bootstrap.group(worker)
-        bootstrap.channel(classOf[NioSocketChannel])
-        bootstrap.option(ChannelOption.SO_KEEPALIVE, true)
-        bootstrap.handler(new ChannelInitializer[SocketChannel] {
-            override protected def initChannel(ch: SocketChannel): Unit =
-                logger.debug("Initializing channel")
-                ch.pipeline().addLast(new Resp3Handler())
-        })
+) extends AutoCloseable {
 
 
-        val app: Either[Throwable, ChannelFuture] = (host, port) match {
-            case (Some(h), Some(p)) => Right(bootstrap.connect(h, p))
-                case _ => Left(Throwable("Host and/or port not valid"))
-        } map(_.sync())
+  override def close(): Unit = socket map { _.close() }
 
-        app.map(e =>
-            logger.debug("Listening")
-            e
-        ).map(_.channel()).map(_.closeFuture()).map(_.sync())
+  val logger: Logger = LoggerFactory.getLogger(classOf[TCPClient])
 
-    }
+  lazy val socket: Either[Throwable, Socket] = (host, port) match {
+    case (Some(h), Some(p)) => logger.debug("Opening connection {}:{}", h, p); Right(new Socket(h, p))
+    case _                  => Left(Throwable("Host and/or port not valid"))
+  }
 
-    worker.shutdownGracefully()
+  def gossip(input: Seq[Byte]): Either[Throwable, Seq[Byte]] =
+    for {
+        s <- socket
+        _ <- Right(logger.debug("Sending bytes {}", input))
+        _ <- Right(s.getOutputStream().write(input.toArray))
+        _ <- Right(s.getOutputStream().flush())
+        _ <- Right(logger.debug("Listening for bytes.."))
+        first <- Right(s.getInputStream().read()) map (_.toByte)
+        _ <- Right(logger.debug("First byte: {}", first))
+        res <- bufferResponse(first, s.getInputStream())
+        _ <- Right(logger.debug("Here some bytes {}", res))
+    } yield res.toSeq
 
-}
 
+  def bufferResponse(first: Byte, input: InputStream): Either[Throwable, Array[Byte]] = {
+    Identifiers.define(first) match
+      case s: Simple => Right(consumeStream(input))
+      case _ => Left(Throwable("Not implemented yet in tcp client"))
+    
+  }
 
-class Resp3Handler extends ChannelInboundHandlerAdapter {
-
-    val logger = LoggerFactory.getLogger(classOf[Resp3Handler])
-
-    override def channelActive(ctx: ChannelHandlerContext): Unit = ctx.writeAndFlush("*1\r\n$4\r\nPING\r\n")
-
-    override def channelRead(ctx: ChannelHandlerContext, msg: Object): Unit = {
-        val m: ByteBuf = msg.asInstanceOf[ByteBuf]
-
-        ctx.writeAndFlush("*1\r\n$4\r\nPING\r\n")
-
-        Try {
-            val bytes = m.readBytes(m.readableBytes()).array()
-            logger.info("Printing: {} :: as string :: {}", bytes, bytes.toSeq.bytesToString)
-
-            ctx.close()
-        }
-
-        m.release()
-    }
-
-    override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
-        cause.printStackTrace()
-        ctx.close()
-    }
+  def consumeStream(input: InputStream, accumulator: Array[Byte] = Array.emptyByteArray): Array[Byte] = {
+    input.read().toByte match
+      case -1 => accumulator
+      case R => accumulator
+      case b: Byte => logger.debug("Read: {}", b); consumeStream(input, accumulator :+ b)
+  }
 
 }
