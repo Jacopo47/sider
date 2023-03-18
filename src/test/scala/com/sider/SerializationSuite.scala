@@ -16,12 +16,29 @@ class SerializationSuite extends munit.FunSuite {
 
     assertEquals(Serialization.parse(head), Right(Seq("Hello")))
     assertEquals(Serialization.parse(head :++ RN), Right(Seq("Hello")))
-    assertEquals(Serialization.parse(head :++ RN :++ tail), Right(Seq("Hello", "World")))
-    assertEquals(Serialization.parse(s"Hello${RNs}World".toSeqOfBytes), Right(Seq("Hello", "World")))
-    assertEquals(Serialization.parse(s"$$11${RNs}helloworld${RNs}".toSeqOfBytes), Right(Seq("$11", "helloworld")))
+    assertEquals(
+      Serialization.parse(head :++ RN :++ tail),
+      Right(Seq("Hello", "World"))
+    )
+    assertEquals(
+      Serialization.parse(s"Hello${RNs}World".toSeqOfBytes),
+      Right(Seq("Hello", "World"))
+    )
+    assertEquals(
+      Serialization.parse(s"$$11${RNs}helloworld${RNs}".toSeqOfBytes),
+      Right(Seq("$11", "helloworld"))
+    )
 
-    assertEquals(Serialization.takeFirstElement(s"$$11${RNs}helloworld${RNs}".toSeqOfBytes.toList), "$11".toSeqOfBytes)
-    assertEquals(Serialization.skip(s"$$11${RNs}helloworld${RNs}".toSeqOfBytes), s"helloworld${RNs}".toSeqOfBytes)
+    assertEquals(
+      Serialization.takeFirstElement(
+        s"$$11${RNs}helloworld${RNs}".toSeqOfBytes.toList
+      ),
+      "$11".toSeqOfBytes
+    )
+    assertEquals(
+      Serialization.skip(s"$$11${RNs}helloworld${RNs}".toSeqOfBytes),
+      s"helloworld${RNs}".toSeqOfBytes
+    )
 
-    }
+  }
 }
