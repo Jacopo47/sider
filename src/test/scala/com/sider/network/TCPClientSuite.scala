@@ -7,6 +7,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import com.sider.toSeqOfBytes
 import com.sider.bytesToString
+import com.sider.Serialization.RNs
 
 class RedisServer
     extends GenericContainer[RedisServer](DockerImageName.parse("redis")) {
@@ -27,11 +28,15 @@ class TCPClientSuite extends munit.FunSuite {
 
   // override def beforeAll(): Unit = redisServer.start()
 
-  test("Echo") {
+  test("Basic commands") {
     Future {
       val client = new TCPClient(Some("localhost"), Some(6379))
-      val res = client.gossip("*1\r\n$4\r\nPING\r\n".toSeqOfBytes)
-      assertEquals(res map { _.bytesToString }, Right("PONG"))
+      val res = client.gossip("PING")
+      assertEquals(res map { _.bytesToString }, Right(s"+PONG$RNs"))
+
+      assertEquals(client.gossip("SET FOO bar") map { _.bytesToString }, Right(s"+OK$RNs"))
+
+      assertEquals(client.gossip("GET FOO") map { _.bytesToString }, Right(s"$$3${RNs}bar$RNs"))
     }
   }
 }

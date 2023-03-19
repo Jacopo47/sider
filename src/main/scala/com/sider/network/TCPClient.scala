@@ -10,6 +10,13 @@ import com.sider.Simple
 import com.sider.Serialization.RN
 import com.sider.Serialization.R
 import com.sider.Serialization.N
+import com.sider.network.TCPClient.endOfStreamByte
+import com.sider.Serialization
+import com.sider.bytesToLong
+import com.sider.Serialization.RNs
+import com.sider.Serialization.RNa
+import scala.annotation.tailrec
+import com.sider.Complex
 
 class TCPClient(
     val host: Option[String] = Some("localhost"),
@@ -26,7 +33,7 @@ class TCPClient(
     case _                  => Left(Throwable("Host and/or port not valid"))
   }
 
-  def gossip(input: Seq[Byte]): Either[Throwable, Seq[Byte]] =
+  def gossip(input: Array[Byte]): Either[Throwable, Array[Byte]] =
     for {
         s <- socket
         _ <- Right(logger.debug("Sending bytes {}", input))
@@ -37,21 +44,51 @@ class TCPClient(
         _ <- Right(logger.debug("First byte: {}", first))
         res <- bufferResponse(first, s.getInputStream())
         _ <- Right(logger.debug("Here some bytes {}", res))
-    } yield res.toSeq
+    } yield res
+
+  def gossip(input: String): Either[Throwable, Array[Byte]] =
+      this.gossip(Serialization.toResp3Command(input))
+
 
 
   def bufferResponse(first: Byte, input: InputStream): Either[Throwable, Array[Byte]] = {
     Identifiers.define(first) match
-      case s: Simple => Right(consumeStream(input))
+      case s: Simple => Right(bufferSingleElement(input, Array(first)))
+      case c: Complex =>
+          val metadata = bufferSingleElement(input, Array(first))
+          val len: Long = metadata
+            .drop(1)
+            .dropRight(2)
+            .bytesToLong
+
+          val blob = bufferBlob(input, Array.emptyByteArray, len)
+
+          Right(metadata ++ blob)
+
+          
+
       case _ => Left(Throwable("Not implemented yet in tcp client"))
     
   }
 
-  def consumeStream(input: InputStream, accumulator: Array[Byte] = Array.emptyByteArray): Array[Byte] = {
-    input.read().toByte match
-      case -1 => accumulator
-      case R => accumulator
-      case b: Byte => logger.debug("Read: {}", b); consumeStream(input, accumulator :+ b)
+  @tailrec
+  private def bufferSingleElement(input: InputStream, accumulator: Array[Byte] = Array.emptyByteArray): Array[Byte] = {
+    val next = input.read()
+    
+    next.toByte match
+      case TCPClient.endOfStreamByte => accumulator
+      case R => accumulator :+ R :+ input.read().toByte
+      case b: Byte => logger.debug("Read: {}", b); bufferSingleElement(input, accumulator :+ b)
+  }
+
+  @tailrec
+  private def bufferBlob(input: InputStream, accumulator: Array[Byte] = Array.emptyByteArray, numberOfElements: Long): Array[Byte] = {
+    numberOfElements match
+      case 0 => accumulator ++ RNa
+      case _ => bufferBlob(input, accumulator :+ input.read().toByte, numberOfElements - 1)
   }
 
 }
+
+object TCPClient:
+  val endOfStreamByte = -1.toByte
