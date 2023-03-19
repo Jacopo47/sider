@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 import org.slf4j.Logger
 import scala.collection.LazyZip2
 
-import com.sider.{Aggregate, Simple, Complex, Identifiers, Type}
+import com.sider.{Aggregate, Complex, Identifiers, Simple, Type}
 object Resp3Serialization {
 
   val logger: Logger = LoggerFactory.getLogger("Serialization")
@@ -48,6 +48,7 @@ object Resp3Serialization {
         .map(e => String(e, charset))
     }.toEither
 
+  @tailrec
   def aggregate(
       input: LazyList[Byte],
       accumulator: Seq[Seq[Byte]] = Seq.empty,
@@ -59,6 +60,7 @@ object Resp3Serialization {
     case R #:: N #:: tail => aggregate(tail, accumulator :+ element, Seq.empty)
     case head #:: tail    => aggregate(tail, accumulator, element :+ head)
 
+  @tailrec
   def takeFirstElement(
       input: LazyList[Byte],
       element: Seq[Byte] = Seq.empty
@@ -68,11 +70,20 @@ object Resp3Serialization {
       case LazyList(R, _*) => element
       case head #:: tail   => takeFirstElement(tail, element :+ head)
 
+  /**
+   * Skips until it found the next element. </p> Element are split by Resp3
+   * terminator (CRLF)
+   */
   def skip(
       input: LazyList[Byte]
   ): LazyList[Byte] =
     input.dropWhile(!R.equals(_)).dropWhile(!N.equals(_)).drop(1)
 
+  /**
+   * Skips until it found the next element. </p> Element are split by Resp3
+   * terminator (CRLF)
+   */
+  @tailrec
   def skip(
       input: Seq[Byte],
       element: Seq[Byte] = Seq.empty
@@ -82,6 +93,10 @@ object Resp3Serialization {
     case R :: N :: tail => skip(Nil, tail)
     case head :: tail   => skip(tail, Seq.empty)
 
+  /**
+   * Transforms the input string in a Resp3 Array. </p> It splits element by
+   * whitespace.
+   */
   def toCommand(input: String): Array[Byte] =
     val elements = input.split(" ")
     val bytes: Array[Byte] = elements
