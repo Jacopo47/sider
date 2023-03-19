@@ -37,14 +37,14 @@ case class MissingTypeMapping() extends Throwable {}
 case class AggregateTypeNotParsable() extends Throwable {}
 
 sealed trait Type[A]:
-  val identifier: Option[Byte]
+  def identifier: Option[Byte]
 
   /* Type's bytes that comes from the outside.
       It expect to be passed without the initial byte but handles \r\n at the end */
-  val raw: Seq[Byte]
+  val raw: LazyList[Byte]
 
+  val value: Either[Throwable, A]
   lazy val length: Either[Throwable, Int] = bytes.map(_.size)
-  lazy val value: Either[Throwable, A]
   lazy val bytes: Either[Throwable, Seq[Byte]]
 
 sealed trait SimpleType[A] extends Type[A] {
@@ -59,13 +59,13 @@ sealed trait ComplexType extends Type[String] {
     .map(len => raw.take(len.size + RN.size + len.bytesToInt + RN.size))
     .map(identifier.get +: _)
 
-  lazy val valueLength: Either[Throwable, Seq[Byte]] = Right(raw)
+  val valueLength: Either[Throwable, Seq[Byte]] = Right(raw)
     .map(Serialization.takeFirstElement(_))
     .filterOrElse(_.nonEmpty, Throwable("Unable to define length"))
 
-  override lazy val value: Either[Throwable, String] = valueLength
-    .map(bytesToInt)
-    .map(Serialization.skip(raw).take(_))
+  override val value: Either[Throwable, String] = bytes
+    .map(Serialization.skip(_))
+    .map(_.dropRight(2))
     .map(bytesToString)
 }
 
@@ -82,7 +82,7 @@ sealed trait AggregateType[A] extends Type[A] {
   lazy val nOfElements: Either[Throwable, Int] = valueLength
     .map(bytesToInt)
 
-  lazy val valueLength: Either[Throwable, Seq[Byte]] = Right(raw)
+  val valueLength: Either[Throwable, Seq[Byte]] = Right(raw)
     .map(Serialization.takeFirstElement(_))
     .filterOrElse(_.nonEmpty, Throwable("Unable to define length"))
 
@@ -91,7 +91,7 @@ sealed trait AggregateType[A] extends Type[A] {
   }
 
   def greedyIterator(
-      i: Seq[Byte],
+      i: LazyList[Byte],
       accumulator: Either[Throwable, Seq[Type[?]]],
       l: Int
   ): Either[Throwable, Seq[Type[?]]] = l match {
@@ -100,7 +100,7 @@ sealed trait AggregateType[A] extends Type[A] {
       val app = Serialization.read(i)
       app match
         case Left(_) =>
-          greedyIterator(Seq.empty, Left(AggregateTypeNotParsable()), 0)
+          greedyIterator(LazyList.empty, Left(AggregateTypeNotParsable()), 0)
         case Right(value) =>
           greedyIterator(
             i.drop(value.length.getOrElse(0)),
@@ -114,11 +114,11 @@ sealed trait AggregateType[A] extends Type[A] {
 
 sealed trait Definition {
   val identifier: Option[Byte]
-  def map(input: Seq[Byte]): Either[Throwable, Type[?]]
+  def map(input: LazyList[Byte]): Either[Throwable, Type[?]]
 }
 
 case class Simple(identifier: Option[Byte]) extends Definition {
-  override def map(input: Seq[Byte]): Either[Throwable, Type[?]] =
+  override def map(input: LazyList[Byte]): Either[Throwable, Type[?]] =
     identifier match
       case Identifiers.SimpleString => Right(SimpleString(input))
       case Identifiers.SimpleError  => Right(SimpleError(input))
@@ -132,7 +132,7 @@ case class Simple(identifier: Option[Byte]) extends Definition {
 }
 case class Complex(identifier: Option[Byte]) extends Definition {
 
-  override def map(input: Seq[Byte]): Either[Throwable, Type[?]] =
+  override def map(input: LazyList[Byte]): Either[Throwable, Type[?]] =
     identifier match {
       case Identifiers.BlobString     => Right(BlobString(input))
       case Identifiers.BlobError      => Right(BlobError(input))
@@ -142,10 +142,7 @@ case class Complex(identifier: Option[Byte]) extends Definition {
 }
 
 case class Aggregate(identifier: Option[Byte]) extends Definition {
-
-  val app = Identifiers.Attribute
-
-  override def map(input: Seq[Byte]): Either[Throwable, Type[?]] =
+  override def map(input: LazyList[Byte]): Either[Throwable, Type[?]] =
     identifier match {
       case Identifiers.Array     => Right(Resp3Array(input))
       case Identifiers.Map       => Right(Map(input))
@@ -156,41 +153,41 @@ case class Aggregate(identifier: Option[Byte]) extends Definition {
 
 }
 
-case class Resp3Array(raw: Seq[Byte]) extends AggregateType[Seq[Any]] {
+case class Resp3Array(raw: LazyList[Byte]) extends AggregateType[Seq[Any]] {
 
-  override val identifier: Option[Byte] = Identifiers.Array
+  override def identifier: Option[Byte] = Identifiers.Array
 
   /** This method is a bit optimistic because is filtering await all failed
     * types without any kind of evidence
     */
-  override lazy val value: Either[Throwable, Seq[Any]] = types map {
+  override val value: Either[Throwable, Seq[Any]] = types map {
     _.map(_.value.toOption).filter(_.isDefined).map(_.get)
   }
 
 }
 
-case class Set(raw: Seq[Byte])
+case class Set(raw: LazyList[Byte])
     extends AggregateType[scala.collection.immutable.Set[Any]] {
 
-  override val identifier: Option[Byte] = Identifiers.Array
+  override def identifier: Option[Byte] = Identifiers.Array
 
   /** This method is a bit optimistic because is filtering await all failed
     * types without any kind of evidence
     */
-  override lazy val value
-      : Either[Throwable, scala.collection.immutable.Set[Any]] = types map {
-    _.map(_.value.toOption)
-      .filter(_.isDefined)
-      .map(_.get)
-      .toSet
-  }
+  override val value: Either[Throwable, scala.collection.immutable.Set[Any]] =
+    types map {
+      _.map(_.value.toOption)
+        .filter(_.isDefined)
+        .map(_.get)
+        .toSet
+    }
 
 }
 
-case class Map(raw: Seq[Byte])
+case class Map(raw: LazyList[Byte])
     extends AggregateType[scala.collection.immutable.Map[Any, Any]] {
 
-  override val identifier: Option[Byte] = Identifiers.Map
+  override def identifier: Option[Byte] = Identifiers.Map
 
   override lazy val nOfElements: Either[Throwable, Int] =
     valueLength.map(bytesToInt).map(_ * 2)
@@ -198,7 +195,7 @@ case class Map(raw: Seq[Byte])
   /** This method is a bit optimistic because is filtering await all failed
     * types without any kind of evidence
     */
-  override lazy val value
+  override val value
       : Either[Throwable, scala.collection.immutable.Map[Any, Any]] =
     types map {
       _.map(_.value.toOption)
@@ -211,9 +208,9 @@ case class Map(raw: Seq[Byte])
 
 }
 
-case class Attribute(raw: Seq[Byte]) extends AggregateType[Any] {
+case class Attribute(raw: LazyList[Byte]) extends AggregateType[Any] {
 
-  override val identifier: Option[Byte] = Identifiers.Map
+  override def identifier: Option[Byte] = Identifiers.Map
 
   override lazy val nOfElements: Either[Throwable, Int] =
     valueLength.map(bytesToInt).map(_ * 2 + 1)
@@ -221,7 +218,7 @@ case class Attribute(raw: Seq[Byte]) extends AggregateType[Any] {
   /** This method is a bit optimistic because is filtering await all failed
     * types without any kind of evidence
     */
-  override lazy val value: Either[Throwable, Any] =
+  override val value: Either[Throwable, Any] =
     types map {
       _.lastOption
         .map(_.value.toOption)
@@ -230,7 +227,8 @@ case class Attribute(raw: Seq[Byte]) extends AggregateType[Any] {
         .getOrElse(Left(AggregateTypeNotParsable()))
     }
 
-  lazy val attributes: Either[Throwable, scala.collection.immutable.Map[Any, Any]] =
+  lazy val attributes
+      : Either[Throwable, scala.collection.immutable.Map[Any, Any]] =
     types map {
       _.dropRight(1) // Drop last that it's the value for this type
         .map(_.value.toOption)
@@ -243,58 +241,58 @@ case class Attribute(raw: Seq[Byte]) extends AggregateType[Any] {
 
 }
 
-case class BlobString(raw: Seq[Byte]) extends ComplexType {
-  override val identifier: Option[Byte] = Identifiers.BlobString
+case class BlobString(raw: LazyList[Byte]) extends ComplexType {
+  override def identifier: Option[Byte] = Identifiers.BlobString
 }
 
-case class BlobError(raw: Seq[Byte]) extends ComplexType {
-  override val identifier: Option[Byte] = Identifiers.BlobError
+case class BlobError(raw: LazyList[Byte]) extends ComplexType {
+  override def identifier: Option[Byte] = Identifiers.BlobError
 }
 
-case class VerbatimString(raw: Seq[Byte]) extends ComplexType {
-  override val identifier: Option[Byte] = Identifiers.VerbatimString
+case class VerbatimString(raw: LazyList[Byte]) extends ComplexType {
+  override def identifier: Option[Byte] = Identifiers.VerbatimString
 }
 
-case class SimpleString(raw: Seq[Byte]) extends SimpleType[String] {
-  override val identifier: Option[Byte] = Identifiers.SimpleString
+case class SimpleString(raw: LazyList[Byte]) extends SimpleType[String] {
+  override def identifier: Option[Byte] = Identifiers.SimpleString
 
-  override lazy val value: Either[Throwable, String] =
+  override val value: Either[Throwable, String] =
     Right(Serialization)
-      .map(_.takeFirstElement(raw.toList))
+      .map(_.takeFirstElement(raw))
       .map(bytesToString)
 
 }
 
-case class SimpleError(raw: Seq[Byte]) extends SimpleType[String] {
-  override val identifier: Option[Byte] = Identifiers.SimpleError
+case class SimpleError(raw: LazyList[Byte]) extends SimpleType[String] {
+  override def identifier: Option[Byte] = Identifiers.SimpleError
 
-  override lazy val value: Either[Throwable, String] =
+  override val value: Either[Throwable, String] =
     Right(Serialization)
-      .map(_.takeFirstElement(raw.toList))
+      .map(_.takeFirstElement(raw))
       .map(bytesToString)
 }
 
-case class Number(raw: Seq[Byte]) extends SimpleType[Long] {
-  override val identifier: Option[Byte] = Identifiers.Number
+case class Number(raw: LazyList[Byte]) extends SimpleType[Long] {
+  override def identifier: Option[Byte] = Identifiers.Number
 
-  override lazy val value: Either[Throwable, Long] =
+  override val value: Either[Throwable, Long] =
     Right(Serialization)
-      .map(_.takeFirstElement(raw.toList))
+      .map(_.takeFirstElement(raw))
       .map(bytesToLong)
 }
 
-case class Null(raw: Seq[Byte]) extends SimpleType[String] {
-  override val identifier: Option[Byte] = Identifiers.Number
+case class Null(raw: LazyList[Byte]) extends SimpleType[String] {
+  override def identifier: Option[Byte] = Identifiers.Number
 
-  override lazy val value: Either[Throwable, String] = Right("Nil")
+  override val value: Either[Throwable, String] = Right("Nil")
 }
 
-case class Double(raw: Seq[Byte]) extends SimpleType[scala.Double] {
-  override val identifier: Option[Byte] = Identifiers.Double
+case class Double(raw: LazyList[Byte]) extends SimpleType[scala.Double] {
+  override def identifier: Option[Byte] = Identifiers.Double
 
-  override lazy val value: Either[Throwable, scala.Double] =
+  override val value: Either[Throwable, scala.Double] =
     Right(Serialization)
-      .map(_.takeFirstElement(raw.toList))
+      .map(_.takeFirstElement(raw))
       .map(bytesToDouble)
 }
 
@@ -302,12 +300,12 @@ object Boolean:
   val T = Some('t'.toByte)
   val F = Some('f'.toByte)
 
-case class Boolean(raw: Seq[Byte]) extends SimpleType[scala.Boolean] {
-  override val identifier: Option[Byte] = Identifiers.Boolean
+case class Boolean(raw: LazyList[Byte]) extends SimpleType[scala.Boolean] {
+  override def identifier: Option[Byte] = Identifiers.Boolean
 
-  override lazy val value: Either[Throwable, scala.Boolean] =
+  override val value: Either[Throwable, scala.Boolean] =
     Right(Serialization)
-      .map(_.takeFirstElement(raw.toList))
+      .map(_.takeFirstElement(raw))
       .map(_.headOption)
       .flatMap {
         case Boolean.T => Right(true)
@@ -317,11 +315,11 @@ case class Boolean(raw: Seq[Byte]) extends SimpleType[scala.Boolean] {
 
 }
 
-case class BigNumber(raw: Seq[Byte]) extends SimpleType[scala.BigInt] {
-  override val identifier: Option[Byte] = Identifiers.BigNumber
+case class BigNumber(raw: LazyList[Byte]) extends SimpleType[scala.BigInt] {
+  override def identifier: Option[Byte] = Identifiers.BigNumber
 
-  override lazy val value: Either[Throwable, scala.BigInt] =
+  override val value: Either[Throwable, scala.BigInt] =
     Right(Serialization)
-      .map(_.takeFirstElement(raw.toList))
+      .map(_.takeFirstElement(raw))
       .map(bytesToBigInt)
 }

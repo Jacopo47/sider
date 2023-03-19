@@ -1,6 +1,7 @@
 package com.sider
 
 import java.nio.charset.StandardCharsets
+import java.lang.Number
 
 object StringExtensions:
   val inf: Seq[Byte] = "inf".toSeqOfBytes
@@ -10,6 +11,7 @@ object StringExtensions:
 
 extension (i: String) 
   def toSeqOfBytes: Seq[Byte] = i.getBytes().toSeq
+  def toStream: LazyList[Byte] = i.getBytes().to(LazyList)
 
 extension (i: Seq[Byte])
   def bytesToString: String = String(i.toArray, StandardCharsets.UTF_8)
@@ -32,3 +34,6 @@ extension (i: Array[Byte])
     case StringExtensions.infAsArray         => scala.Double.MaxValue
     case StringExtensions.negativeInfAsArray => scala.Double.MinValue
     case _                                   => bytesToString.toDouble
+
+extension (i: Int)
+  def getBytes: Array[Byte] = i.toString().getBytes()

@@ -6,9 +6,9 @@ import com.sider.Serialization.RNs
 import com.sider.Serialization
 class SerializationSuite extends munit.FunSuite {
   test("TypeSerialization") {
-    val head = "Hello".getBytes().toList
-    val tail = "World".getBytes().toList
-    val result = Serialization.aggregate(head :++ RN :++ tail)
+    val head = "Hello".toStream
+    val tail = "World".toStream
+    val result = Serialization.aggregate(head #::: RN #::: tail)
 
     assertEquals(Serialization.aggregate(head), Seq(head))
     assertEquals(Serialization.aggregate(head :++ RN), Seq(head))
@@ -31,13 +31,13 @@ class SerializationSuite extends munit.FunSuite {
 
     assertEquals(
       Serialization.takeFirstElement(
-        s"$$11${RNs}helloworld${RNs}".toSeqOfBytes.toList
+        s"$$11${RNs}helloworld${RNs}".toStream
       ),
       "$11".toSeqOfBytes
     )
     assertEquals(
-      Serialization.skip(s"$$11${RNs}helloworld${RNs}".toSeqOfBytes),
-      s"helloworld${RNs}".toSeqOfBytes
+      Serialization.skip(s"$$11${RNs}helloworld${RNs}".toStream).toArray.bytesToString,
+      s"helloworld${RNs}"
     )
 
   }
