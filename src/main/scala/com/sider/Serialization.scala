@@ -20,14 +20,12 @@ object Serialization {
   val RNs: String = new String(RN.toArray, StandardCharsets.UTF_8)
 
   def readString[E >: Type[?]](
-      input: String,
-      charset: Charset = StandardCharsets.UTF_8
+      input: String
   ): Either[Throwable, E] =
-    read(input.toSeqOfBytes.to(LazyList), charset)
+    read(input.toStream)
 
   def read[E >: Type[?]](
-      input: LazyList[Byte],
-      charset: Charset = StandardCharsets.UTF_8
+      input: LazyList[Byte]
   ): Either[Throwable, E] =
     input match
       case head +: tail =>

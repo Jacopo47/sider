@@ -52,10 +52,30 @@ class TCPClientSuite extends munit.FunSuite {
       client.gossip(s"SET withNewLine foo${RNs}bar") flatMap { _.value },
       Right("OK")
     )
-    
+
     assertEquals(
       client.gossip("GET withNewLine") flatMap { _.value },
       Right(s"foo${RNs}bar")
+    )
+
+    assertEquals(
+      client.gossip(s"RPUSH mylist 1 2 3") flatMap { _.value },
+      Right(3)
+    )
+
+    assertEquals(
+      client.gossip(s"LRANGE mylist 0 -1") flatMap { _.value },
+      Right(Seq("1", "2", "3"))
+    )
+
+    assertEquals(
+      client.gossip(s"RPUSH mylist 4 5 6") flatMap { _.value },
+      Right(6)
+    )
+
+    assertEquals(
+      client.gossip(s"LRANGE mylist 0 -1") flatMap { _.value },
+      Right(Seq("1", "2", "3", "4", "5", "6"))
     )
   }
 }
