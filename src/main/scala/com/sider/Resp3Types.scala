@@ -1,12 +1,12 @@
 package com.sider
 
-import com.sider.Serialization
+import com.sider.Resp3Serialization
 import com.sider.{bytesToString, bytesToInt}
 import java.nio.charset.StandardCharsets
-import com.sider.Serialization.RN
-import com.sider.Serialization.R
-import com.sider.Serialization.N
-import scala.collection.Map
+import com.sider.Resp3Serialization.RN
+import com.sider.Resp3Serialization.R
+import com.sider.Resp3Serialization.N
+import collection.Map
 
 object Identifiers {
   val BlobString = Some('$'.toByte)
@@ -48,7 +48,7 @@ sealed trait Type[A]:
   lazy val bytes: Either[Throwable, Seq[Byte]]
 
 sealed trait SimpleType[A] extends Type[A] {
-  lazy val bytes: Either[Throwable, Seq[Byte]] = Right(Serialization)
+  lazy val bytes: Either[Throwable, Seq[Byte]] = Right(Resp3Serialization)
     .map(_.takeFirstElement(raw))
     .filterOrElse(_.nonEmpty, Throwable("Unable to define length"))
     .map(identifier.get +: _ :++ RN)
@@ -60,11 +60,11 @@ sealed trait ComplexType extends Type[String] {
     .map(identifier.get +: _)
 
   val valueLength: Either[Throwable, Seq[Byte]] = Right(raw)
-    .map(Serialization.takeFirstElement(_))
+    .map(Resp3Serialization.takeFirstElement(_))
     .filterOrElse(_.nonEmpty, Throwable("Unable to define length"))
 
   override val value: Either[Throwable, String] = bytes
-    .map(Serialization.skip(_))
+    .map(Resp3Serialization.skip(_))
     .map(_.dropRight(2))
     .map(bytesToString)
 }
@@ -83,11 +83,11 @@ sealed trait AggregateType[A] extends Type[A] {
     .map(bytesToInt)
 
   val valueLength: Either[Throwable, Seq[Byte]] = Right(raw)
-    .map(Serialization.takeFirstElement(_))
+    .map(Resp3Serialization.takeFirstElement(_))
     .filterOrElse(_.nonEmpty, Throwable("Unable to define length"))
 
   lazy val types: Either[Throwable, Seq[Type[?]]] = nOfElements flatMap {
-    greedyIterator(Serialization.skip(raw), Right(Seq.empty), _)
+    greedyIterator(Resp3Serialization.skip(raw), Right(Seq.empty), _)
   }
 
   def greedyIterator(
@@ -97,7 +97,7 @@ sealed trait AggregateType[A] extends Type[A] {
   ): Either[Throwable, Seq[Type[?]]] = l match {
     case 0 => accumulator
     case _ => {
-      val app = Serialization.read(i)
+      val app = Resp3Serialization.read(i)
       app match
         case Left(_) =>
           greedyIterator(LazyList.empty, Left(AggregateTypeNotParsable()), 0)
@@ -124,8 +124,8 @@ case class Simple(identifier: Option[Byte]) extends Definition {
       case Identifiers.SimpleError  => Right(SimpleError(input))
       case Identifiers.Number       => Right(Number(input))
       case Identifiers.Null         => Right(Null(input))
-      case Identifiers.Double       => Right(Double(input))
-      case Identifiers.Boolean      => Right(Boolean(input))
+      case Identifiers.Double       => Right(Resp3Double(input))
+      case Identifiers.Boolean      => Right(Resp3Boolean(input))
       case Identifiers.BigNumber    => Right(BigNumber(input))
       case _                        => Left(MissingTypeMapping())
 
@@ -145,8 +145,8 @@ case class Aggregate(identifier: Option[Byte]) extends Definition {
   override def map(input: LazyList[Byte]): Either[Throwable, Type[?]] =
     identifier match {
       case Identifiers.Array     => Right(Resp3Array(input))
-      case Identifiers.Map       => Right(Map(input))
-      case Identifiers.Set       => Right(Set(input))
+      case Identifiers.Map       => Right(Resp3Map(input))
+      case Identifiers.Set       => Right(Resp3Set(input))
       case Identifiers.Attribute => Right(Attribute(input))
       case _                     => Left(MissingTypeMapping())
     }
@@ -166,15 +166,15 @@ case class Resp3Array(raw: LazyList[Byte]) extends AggregateType[Seq[Any]] {
 
 }
 
-case class Set(raw: LazyList[Byte])
-    extends AggregateType[scala.collection.immutable.Set[Any]] {
+case class Resp3Set(raw: LazyList[Byte])
+    extends AggregateType[Set[Any]] {
 
   override def identifier: Option[Byte] = Identifiers.Array
 
   /** This method is a bit optimistic because is filtering await all failed
     * types without any kind of evidence
     */
-  override val value: Either[Throwable, scala.collection.immutable.Set[Any]] =
+  override val value: Either[Throwable, Set[Any]] =
     types map {
       _.map(_.value.toOption)
         .filter(_.isDefined)
@@ -184,8 +184,8 @@ case class Set(raw: LazyList[Byte])
 
 }
 
-case class Map(raw: LazyList[Byte])
-    extends AggregateType[scala.collection.immutable.Map[Any, Any]] {
+case class Resp3Map(raw: LazyList[Byte])
+    extends AggregateType[Map[Any, Any]] {
 
   override def identifier: Option[Byte] = Identifiers.Map
 
@@ -196,7 +196,7 @@ case class Map(raw: LazyList[Byte])
     * types without any kind of evidence
     */
   override val value
-      : Either[Throwable, scala.collection.immutable.Map[Any, Any]] =
+      : Either[Throwable, Map[Any, Any]] =
     types map {
       _.map(_.value.toOption)
         .filter(_.isDefined)
@@ -228,7 +228,7 @@ case class Attribute(raw: LazyList[Byte]) extends AggregateType[Any] {
     }
 
   lazy val attributes
-      : Either[Throwable, scala.collection.immutable.Map[Any, Any]] =
+      : Either[Throwable, Map[Any, Any]] =
     types map {
       _.dropRight(1) // Drop last that it's the value for this type
         .map(_.value.toOption)
@@ -257,7 +257,7 @@ case class SimpleString(raw: LazyList[Byte]) extends SimpleType[String] {
   override def identifier: Option[Byte] = Identifiers.SimpleString
 
   override val value: Either[Throwable, String] =
-    Right(Serialization)
+    Right(Resp3Serialization)
       .map(_.takeFirstElement(raw))
       .map(bytesToString)
 
@@ -267,7 +267,7 @@ case class SimpleError(raw: LazyList[Byte]) extends SimpleType[String] {
   override def identifier: Option[Byte] = Identifiers.SimpleError
 
   override val value: Either[Throwable, String] =
-    Right(Serialization)
+    Right(Resp3Serialization)
       .map(_.takeFirstElement(raw))
       .map(bytesToString)
 }
@@ -276,7 +276,7 @@ case class Number(raw: LazyList[Byte]) extends SimpleType[Long] {
   override def identifier: Option[Byte] = Identifiers.Number
 
   override val value: Either[Throwable, Long] =
-    Right(Serialization)
+    Right(Resp3Serialization)
       .map(_.takeFirstElement(raw))
       .map(bytesToLong)
 }
@@ -287,39 +287,39 @@ case class Null(raw: LazyList[Byte]) extends SimpleType[String] {
   override val value: Either[Throwable, String] = Right("Nil")
 }
 
-case class Double(raw: LazyList[Byte]) extends SimpleType[scala.Double] {
+case class Resp3Double(raw: LazyList[Byte]) extends SimpleType[Double] {
   override def identifier: Option[Byte] = Identifiers.Double
 
-  override val value: Either[Throwable, scala.Double] =
-    Right(Serialization)
+  override val value: Either[Throwable, Double] =
+    Right(Resp3Serialization)
       .map(_.takeFirstElement(raw))
       .map(bytesToDouble)
 }
 
-object Boolean:
+object Resp3Boolean:
   val T = Some('t'.toByte)
   val F = Some('f'.toByte)
 
-case class Boolean(raw: LazyList[Byte]) extends SimpleType[scala.Boolean] {
+case class Resp3Boolean(raw: LazyList[Byte]) extends SimpleType[Boolean] {
   override def identifier: Option[Byte] = Identifiers.Boolean
 
-  override val value: Either[Throwable, scala.Boolean] =
-    Right(Serialization)
+  override val value: Either[Throwable, Boolean] =
+    Right(Resp3Serialization)
       .map(_.takeFirstElement(raw))
       .map(_.headOption)
       .flatMap {
-        case Boolean.T => Right(true)
-        case Boolean.F => Right(false)
+        case Resp3Boolean.T => Right(true)
+        case Resp3Boolean.F => Right(false)
         case e         => Left(Throwable(s"Unable to parse $e as boolean"))
       }
 
 }
 
-case class BigNumber(raw: LazyList[Byte]) extends SimpleType[scala.BigInt] {
+case class BigNumber(raw: LazyList[Byte]) extends SimpleType[BigInt] {
   override def identifier: Option[Byte] = Identifiers.BigNumber
 
-  override val value: Either[Throwable, scala.BigInt] =
-    Right(Serialization)
+  override val value: Either[Throwable, BigInt] =
+    Right(Resp3Serialization)
       .map(_.takeFirstElement(raw))
       .map(bytesToBigInt)
 }

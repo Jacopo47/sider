@@ -9,15 +9,16 @@ import org.slf4j.LoggerFactory
 import org.slf4j.Logger
 import scala.collection.LazyZip2
 
-object Serialization {
+import com.sider.{Aggregate, Simple, Complex, Identifiers, Type}
+object Resp3Serialization {
 
   val logger: Logger = LoggerFactory.getLogger("Serialization")
 
   val R = '\r'.toByte
   val N = '\n'.toByte
   val RN = LazyList(R, N)
-  val RNa = Array(R, N)
-  val RNs: String = new String(RN.toArray, StandardCharsets.UTF_8)
+  val RNa = RN.toArray
+  val RNs: String = new String(RNa, StandardCharsets.UTF_8)
 
   def readString[E >: Type[?]](
       input: String
@@ -81,7 +82,7 @@ object Serialization {
     case R :: N :: tail => skip(Nil, tail)
     case head :: tail   => skip(tail, Seq.empty)
 
-  def toResp3Command(input: String): Array[Byte] =
+  def toCommand(input: String): Array[Byte] =
     val elements = input.split(" ")
     val bytes: Array[Byte] = elements
       .map(_.getBytes())

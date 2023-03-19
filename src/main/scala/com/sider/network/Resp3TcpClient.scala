@@ -7,14 +7,13 @@ import scala.util.Try
 import java.io.InputStream
 import com.sider.Identifiers
 import com.sider.Simple
-import com.sider.Serialization.RN
-import com.sider.Serialization.R
-import com.sider.Serialization.N
-import com.sider.network.TCPClient.endOfStreamByte
-import com.sider.Serialization
+import com.sider.Resp3Serialization.RN
+import com.sider.Resp3Serialization.R
+import com.sider.Resp3Serialization.N
+import com.sider.Resp3Serialization
 import com.sider.bytesToLong
-import com.sider.Serialization.RNs
-import com.sider.Serialization.RNa
+import com.sider.Resp3Serialization.RNs
+import com.sider.Resp3Serialization.RNa
 import scala.annotation.tailrec
 import com.sider.Complex
 import com.sider.Aggregate
@@ -22,14 +21,14 @@ import com.sider.Type
 import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
 
-class TCPClient(
+class Resp3TcpClient(
     val host: Option[String] = Some("localhost"),
     val port: Option[Int] = Some(6379)
 ) extends AutoCloseable {
 
   override def close(): Unit = socket map { _.close() }
 
-  val logger: Logger = LoggerFactory.getLogger(classOf[TCPClient])
+  val logger: Logger = LoggerFactory.getLogger(classOf[Resp3TcpClient])
 
   lazy val socket: Either[Throwable, Socket] = (host, port) match {
     case (Some(h), Some(p)) =>
@@ -41,18 +40,18 @@ class TCPClient(
     for {
       s <- socket
       _ <- Right(logger.debug("Sending bytes {}", input))
-      _ <- Right(s.getOutputStream().write(input.toArray))
+      _ <- Right(s.getOutputStream().write(input))
       _ <- Right(s.getOutputStream().flush())
       _ <- Right(logger.debug("Listening for bytes.."))
-      res <- responseToType(s.getInputStream())
+      res <- collectResponseToResp3Type(s.getInputStream())
       _ <- Right(logger.debug("Here some bytes {}", res))
     } yield res
 
   def gossip(input: String): Either[Throwable, Type[?]] =
-    this.gossip(Serialization.toResp3Command(input))
+    this.gossip(Resp3Serialization.toCommand(input))
 
-  def responseToType(input: InputStream): Either[Throwable, Type[?]] = {
-    Serialization.read(
+  def collectResponseToResp3Type(input: InputStream): Either[Throwable, Type[?]] = {
+    Resp3Serialization.read(
       LazyList.continually({
         val next = input.read().toByte
         logger.debug("Read {}", next)
@@ -63,6 +62,3 @@ class TCPClient(
   }
 
 }
-
-object TCPClient:
-  val endOfStreamByte = -1.toByte

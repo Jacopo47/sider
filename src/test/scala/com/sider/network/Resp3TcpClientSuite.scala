@@ -3,13 +3,9 @@ package com.sider.network
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.utility.DockerImageName
 import org.testcontainers.containers.wait.strategy.Wait
-import scala.concurrent.Future
 import scala.concurrent.duration.Duration
-import com.sider.toSeqOfBytes
-import com.sider.bytesToString
-import com.sider.Serialization.RNs
-import com.sider.toStream
 import com.sider.SimpleString
+import com.sider.Resp3Serialization.RNs
 
 class RedisServer
     extends GenericContainer[RedisServer](DockerImageName.parse("redis")) {
@@ -19,7 +15,7 @@ class RedisServer
 
 }
 
-class TCPClientSuite extends munit.FunSuite {
+class Resp3TcpClientSuite extends munit.FunSuite {
 
   implicit val ec: scala.concurrent.ExecutionContext =
     scala.concurrent.ExecutionContext.global
@@ -28,10 +24,12 @@ class TCPClientSuite extends munit.FunSuite {
 
   override val munitTimeout = Duration(15, "s")
 
-  // override def beforeAll(): Unit = redisServer.start()
+  override def beforeAll(): Unit = redisServer.start()
+
+  override def afterAll(): Unit = redisServer.stop()
 
   test("Basic commands") {
-    val client = new TCPClient(Some("localhost"), Some(6379))
+    val client = new Resp3TcpClient(Some("localhost"), Some(redisServer.getMappedPort(6379)))
     client.gossip("PING") match {
       case v: Either[Throwable, SimpleString] =>
         assertEquals(v flatMap { _.value }, Right("PONG"))
