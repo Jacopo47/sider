@@ -9,8 +9,8 @@ import java.io.InputStream
 import com.sider.concurrency.IO
 
 class Resp3TcpClient(
-    val host: Option[String] = Some("localhost"),
-    val port: Option[Int] = Some(6379)
+    val host: Option[String],
+    val port: Option[Int]
 ) extends AutoCloseable {
 
   override def close(): Unit = socket map { _.close() }
@@ -38,7 +38,7 @@ class Resp3TcpClient(
       } yield res
     }
 
-  def gossip(input: String): IO[Either[Throwable, Type[?]]] =
+  def sendAndWaitResponse(input: String): IO[Either[Throwable, Type[?]]] =
     this.sendAndWaitResponse(Resp3Serialization.toCommand(input))
 
   def collectResponseToResp3Type(
