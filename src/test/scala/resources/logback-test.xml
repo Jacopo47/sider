@@ -10,7 +10,6 @@
 
 
     <logger name="com.sider" level="DEBUG"/>
-    <logger name="io.netty" level="DEBUG"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT" />

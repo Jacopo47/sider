@@ -147,7 +147,7 @@ case class Aggregate(identifier: Option[Byte]) extends Definition {
 
   override def map(input: Seq[Byte]): Either[Throwable, Type[?]] =
     identifier match {
-      case Identifiers.Array     => Right(Array(input))
+      case Identifiers.Array     => Right(Resp3Array(input))
       case Identifiers.Map       => Right(Map(input))
       case Identifiers.Set       => Right(Set(input))
       case Identifiers.Attribute => Right(Attribute(input))
@@ -156,7 +156,7 @@ case class Aggregate(identifier: Option[Byte]) extends Definition {
 
 }
 
-case class Array(raw: Seq[Byte]) extends AggregateType[Seq[Any]] {
+case class Resp3Array(raw: Seq[Byte]) extends AggregateType[Seq[Any]] {
 
   override val identifier: Option[Byte] = Identifiers.Array
 

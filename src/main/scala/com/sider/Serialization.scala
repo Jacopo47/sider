@@ -1,19 +1,17 @@
 package com.sider
 
-
 import scala.util.Try
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import scala.annotation.tailrec
 import com.sider.Identifiers.define
 
-
-
 object Serialization {
 
   val R = '\r'.toByte
   val N = '\n'.toByte
   val RN = Seq(R, N)
+  val RNa = Array(R, N)
   val RNs: String = new String(RN.toArray, StandardCharsets.UTF_8)
 
   def readString[E >: Type[?]](
@@ -73,4 +71,18 @@ object Serialization {
     case R :: N :: Nil  => skip(Nil, Seq.empty)
     case R :: N :: tail => skip(Nil, tail)
     case head :: tail   => skip(tail, Seq.empty)
+
+  def toResp3Command(input: String): Array[Byte] =
+    val elements = input.split(" ")
+    val bytes: Array[Byte] = elements
+      .map(_.getBytes())
+      .flatMap(e =>
+        Array(Identifiers.BlobString.get) ++ e.length
+          .toString()
+          .getBytes() ++ RNa ++ e ++ RNa
+      )
+
+    Array(Identifiers.Array.get) ++ elements.length
+      .toString()
+      .getBytes() ++ RNa ++ bytes ++ RNa
 }

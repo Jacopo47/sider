@@ -159,7 +159,7 @@ class TypesSuite extends munit.FunSuite {
 
   test("Array") {
     val test = Serialization.readString(s"*3$RNs:1$RNs:2$RNs:3$RNs") match
-      case e: Either[Throwable, Array] => e
+      case e: Either[Throwable, Resp3Array] => e
       case _                           => Left(Throwable("Unexpected type"))
 
     assertEquals(test.flatMap(_.length), Right(16))
