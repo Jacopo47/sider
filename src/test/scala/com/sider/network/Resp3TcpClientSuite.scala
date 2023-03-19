@@ -30,7 +30,7 @@ class Resp3TcpClientSuite extends munit.FunSuite {
 
   test("Basic commands") {
     val client = new Resp3TcpClient(Some("localhost"), Some(redisServer.getMappedPort(6379)))
-    client.gossip("PING").get match {
+    client.sendAndWaitResponse("PING").get match {
       case v: Either[Throwable, SimpleString] =>
         assertEquals(v flatMap { _.value }, Right("PONG"))
       case _ => assert(false)
@@ -38,41 +38,41 @@ class Resp3TcpClientSuite extends munit.FunSuite {
     }
 
     assertEquals(
-      client.gossip("SET FOO bar").get flatMap { _.value },
+      client.sendAndWaitResponse("SET FOO bar").get flatMap { _.value },
       Right(s"OK")
     )
     assertEquals(
-      client.gossip("GET FOO").get flatMap { _.value },
+      client.sendAndWaitResponse("GET FOO").get flatMap { _.value },
       Right("bar")
     )
 
     assertEquals(
-      client.gossip(s"SET withNewLine foo${RNs}bar").get flatMap { _.value },
+      client.sendAndWaitResponse(s"SET withNewLine foo${RNs}bar").get flatMap { _.value },
       Right("OK")
     )
 
     assertEquals(
-      client.gossip("GET withNewLine").get flatMap { _.value },
+      client.sendAndWaitResponse("GET withNewLine").get flatMap { _.value },
       Right(s"foo${RNs}bar")
     )
 
     assertEquals(
-      client.gossip(s"RPUSH mylist 1 2 3").get flatMap { _.value },
+      client.sendAndWaitResponse(s"RPUSH mylist 1 2 3").get flatMap { _.value },
       Right(3)
     )
 
     assertEquals(
-      client.gossip(s"LRANGE mylist 0 -1").get flatMap { _.value },
+      client.sendAndWaitResponse(s"LRANGE mylist 0 -1").get flatMap { _.value },
       Right(Seq("1", "2", "3"))
     )
 
     assertEquals(
-      client.gossip(s"RPUSH mylist 4 5 6").get flatMap { _.value },
+      client.sendAndWaitResponse(s"RPUSH mylist 4 5 6").get flatMap { _.value },
       Right(6)
     )
 
     assertEquals(
-      client.gossip(s"LRANGE mylist 0 -1").get flatMap { _.value },
+      client.sendAndWaitResponse(s"LRANGE mylist 0 -1").get flatMap { _.value },
       Right(Seq("1", "2", "3", "4", "5", "6"))
     )
   }
