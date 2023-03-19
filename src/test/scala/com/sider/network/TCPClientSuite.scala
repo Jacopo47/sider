@@ -8,6 +8,8 @@ import scala.concurrent.duration.Duration
 import com.sider.toSeqOfBytes
 import com.sider.bytesToString
 import com.sider.Serialization.RNs
+import com.sider.toStream
+import com.sider.SimpleString
 
 class RedisServer
     extends GenericContainer[RedisServer](DockerImageName.parse("redis")) {
@@ -29,14 +31,31 @@ class TCPClientSuite extends munit.FunSuite {
   // override def beforeAll(): Unit = redisServer.start()
 
   test("Basic commands") {
-    Future {
-      val client = new TCPClient(Some("localhost"), Some(6379))
-      val res = client.gossip("PING")
-      assertEquals(res map { _.bytesToString }, Right(s"+PONG$RNs"))
+    val client = new TCPClient(Some("localhost"), Some(6379))
+    client.gossip("PING") match {
+      case v: Either[Throwable, SimpleString] =>
+        assertEquals(v flatMap { _.value }, Right("PONG"))
+      case _ => assert(false)
 
-      assertEquals(client.gossip("SET FOO bar") map { _.bytesToString }, Right(s"+OK$RNs"))
-
-      assertEquals(client.gossip("GET FOO") map { _.bytesToString }, Right(s"$$3${RNs}bar$RNs"))
     }
+
+    assertEquals(
+      client.gossip("SET FOO bar") flatMap { _.value },
+      Right(s"OK")
+    )
+    assertEquals(
+      client.gossip("GET FOO") flatMap { _.value },
+      Right("bar")
+    )
+
+    assertEquals(
+      client.gossip(s"SET withNewLine foo${RNs}bar") flatMap { _.value },
+      Right("OK")
+    )
+    
+    assertEquals(
+      client.gossip("GET withNewLine") flatMap { _.value },
+      Right(s"foo${RNs}bar")
+    )
   }
 }
