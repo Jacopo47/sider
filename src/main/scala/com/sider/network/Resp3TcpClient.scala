@@ -7,6 +7,7 @@ import com.sider.Type
 import com.sider.Resp3Serialization
 import java.io.InputStream
 import com.sider.concurrency.IO
+import scala.annotation.internal.Repeated
 
 class Resp3TcpClient(
     val host: Option[String],
@@ -49,11 +50,11 @@ class Resp3TcpClient(
       } yield res
     }
 
-  def sendAndWaitResponse(input: String): IO[Either[Throwable, Type[?]]] =
-    this.sendAndWaitResponse(Resp3Serialization.toCommand(input))
+  def sendAndWaitResponse(input: String*): IO[Either[Throwable, Type[?]]] =
+    this.sendAndWaitResponse(Resp3Serialization.toCommand(input:_*))
 
-  def sendAndWaitResponseSync(input: String): Either[Throwable, Type[?]] =
-    this.sendAndWaitResponse(input).get
+  def sendAndWaitResponseSync(input: String*): Either[Throwable, Type[?]] =
+    this.sendAndWaitResponse(input:_*).get
 
   def collectResponseToResp3Type(
       input: InputStream

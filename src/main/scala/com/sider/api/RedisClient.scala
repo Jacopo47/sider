@@ -5,6 +5,7 @@ import com.sider.concurrency.IO
 import com.sider.Type
 import com.sider.SimpleString
 import com.sider.BlobString
+import com.sider.SimpleError
 
 case class ResponseNotMappedError() extends Throwable
 case class KeyNotFound() extends Throwable
@@ -33,9 +34,14 @@ class RedisClient(
   }
 }
 
+// TODO Find a way a clever to map SimpleError / BlobError to Left(Throwable())
+
 class BasicStringCommands(
     val tcp: Resp3TcpClient
 ) extends StringCommands {
+
+  override def append(key: String, value: String): Either[Throwable, String] =
+    ???
 
   override def setRange(
       key: String,
@@ -46,15 +52,26 @@ class BasicStringCommands(
   override def mset(entries: Map[String, String]): Either[Throwable, String] =
     ???
 
-  override def incr(key: String): Either[Throwable, String] = ???
+  override def incr(key: String): Either[Throwable, Long] =
+    tcp.sendAndWaitResponseSync(s"INCR $key") flatMap {
+      case v: com.sider.Number => v.value
+      case _                   => Left(ResponseNotMappedError())
+    }
 
-  override def append(key: String, value: String): Either[Throwable, String] =
-    ???
+  override def incrBy(key: String, increment: Long): Either[Throwable, Long] =
+    tcp.sendAndWaitResponseSync(s"INCRBY $key $increment") flatMap {
+      case v: com.sider.Number => v.value
+      case _                   => Left(ResponseNotMappedError())
+    }
 
   override def incrByFloat(
       key: String,
       increment: Double
-  ): Either[Throwable, String] = ???
+  ): Either[Throwable, Double] =
+    tcp.sendAndWaitResponseSync(s"INCRBYFLOAT $key $increment") flatMap {
+      case v: BlobString => v.value map { _.toDouble }
+      case _             => Left(ResponseNotMappedError())
+    }
 
   override def get(key: String): Either[Throwable, String] =
     tcp.sendAndWaitResponseSync(s"GET $key") flatMap {
@@ -86,12 +103,28 @@ class BasicStringCommands(
       ex: Option[Long],
       px: Option[Long],
       exat: Option[Long],
+      pxat: Option[Long],
       nx: Boolean,
       xx: Boolean,
       keepttl: Boolean,
       get: Boolean
   ): Either[Throwable, String] =
-    tcp.sendAndWaitResponseSync(s"SET $key $value") flatMap {
+    val command: Seq[String] = Seq(
+      "SET",
+      key,
+      value,
+      if nx then "NX" else null,
+      if xx then "XX" else null,
+      if get then "GET" else null,
+      ex.map(_.toString()).getOrElse(null),
+      px.map(_.toString()).getOrElse(null),
+      exat.map(_.toString()).getOrElse(null),
+      pxat.map(_.toString()).getOrElse(null),
+      if keepttl then "KEEPTTL" else null
+    )
+      .filter(_ != null)
+
+    tcp.sendAndWaitResponseSync(command: _*) flatMap {
       case v: SimpleString => v.value
       case _               => Left(ResponseNotMappedError())
     }
@@ -99,9 +132,6 @@ class BasicStringCommands(
   override def mget(keys: String*): Either[Throwable, Seq[String]] = ???
 
   override def getDel(key: String): Either[Throwable, String] = ???
-
-  override def incrBy(key: String, increment: Long): Either[Throwable, String] =
-    ???
 
   override def msetNx(entries: Map[String, String]): Either[Throwable, Long] =
     ???

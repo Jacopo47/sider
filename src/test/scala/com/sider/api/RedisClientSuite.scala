@@ -13,20 +13,27 @@ class RedisClientSuite extends munit.FunSuite {
   override def beforeAll(): Unit = redisServer.start()
 
   override def afterAll(): Unit = redisServer.stop()
-  
+
   test("SET and GET") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
 
-    c.strings.set("foo", "bar")
+    val app = c.strings.set("foo", "bar")
 
-    assertEquals(c.strings.get("foo").getOrElse("Error"), "bar")
+    assertEquals(c.strings.get("foo"), Right("bar"))
 
-    // TODO : does not work because SET is not send and response is not proper parsed
-    //c.strings.set("foo1", "bar")
-    val res = c.strings.get("foo1")
-    assertEquals(res, Left(KeyNotFound()))  
+    assertEquals(c.strings.get("foo1"), Left(KeyNotFound()))
+    assertEquals(c.strings.set("foo1", "bar"), Right("OK"))
+    assertEquals(c.strings.get("foo1"), Right("bar"))
+  }
 
-    c.strings.set("foo1", "bar")
-    assertEquals(c.strings.get("foo1"), Right("bar"))  
+  test("INCR* AND DECR*") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+
+    assert(c.strings.set("foo", "0").isRight)
+    assertEquals(c.strings.incr("foo"), Right(1L))
+    assertEquals(c.strings.incrBy("foo", 19L), Right(20L))
+    assertEquals(c.strings.incrByFloat("foo", 1.2), Right(21.2))
+    assertEquals(c.strings.incrByFloat("foo", -21.2), Right(0.0))
+    assertEquals(c.strings.get("foo"), Right("0"))
   }
 }

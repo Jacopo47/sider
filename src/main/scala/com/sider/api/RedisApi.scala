@@ -29,6 +29,7 @@ trait StringCommands extends RedisCommandsByType {
       ex: Option[Long] = None,
       px: Option[Long] = None,
       exat: Option[Long] = None,
+      pxat: Option[Long] = None,
       nx: Boolean = false,
       xx: Boolean = false,
       keepttl: Boolean = false,
@@ -51,9 +52,9 @@ trait StringCommands extends RedisCommandsByType {
   def decr(key: String): Either[Throwable, Long]
   def decrBy(key: String, decrement: Long): Either[Throwable, Long]
 
-  def incr(key: String): Either[Throwable, String]
-  def incrBy(key: String, increment: Long): Either[Throwable, String]
-  def incrByFloat(key: String, increment: Double): Either[Throwable, String]
+  def incr(key: String): Either[Throwable, Long]
+  def incrBy(key: String, increment: Long): Either[Throwable, Long]
+  def incrByFloat(key: String, increment: Double): Either[Throwable, Double]
 
   def strlen(key: String): Either[Throwable, Long]
 

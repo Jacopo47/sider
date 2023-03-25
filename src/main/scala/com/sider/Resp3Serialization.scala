@@ -95,11 +95,15 @@ object Resp3Serialization {
 
   /**
    * Transforms the input string in a Resp3 Array. </p> It splits element by
-   * whitespace.
+   * whitespace. If a single element is passed. Treats the input already
+   * splitted if more than 1 elements is passed.
    */
-  def toCommand(input: String): Array[Byte] =
-    val elements = input.split(" ")
+  def toCommand(input: String*): Array[Byte] =
+    logger.debug("Preparing command: {}", input)
+    val elements = if input.size == 1 then input(0).split(" ") else input.toArray
+
     val bytes: Array[Byte] = elements
+      .filter(_ != null)
       .map(_.getBytes())
       .flatMap(e =>
         Array(
