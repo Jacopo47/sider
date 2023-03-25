@@ -17,12 +17,16 @@ class RedisClientSuite extends munit.FunSuite {
   test("SET and GET") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
 
-    c.set("foo", "bar").get
+    c.strings.set("foo", "bar")
 
-    assertEquals(c.get("foo").get.getOrElse("Error"), "bar")
+    assertEquals(c.strings.get("foo").getOrElse("Error"), "bar")
 
     // TODO : does not work because SET is not send and response is not proper parsed
-    c.set("foo1", "bar")
-    assertEquals(c.get("foo1").get.getOrElse("Error"), "bar")  
+    //c.strings.set("foo1", "bar")
+    val res = c.strings.get("foo1")
+    assertEquals(res, Left(KeyNotFound()))  
+
+    c.strings.set("foo1", "bar")
+    assertEquals(c.strings.get("foo1"), Right("bar"))  
   }
 }
