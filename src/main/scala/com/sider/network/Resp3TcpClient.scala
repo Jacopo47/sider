@@ -19,9 +19,20 @@ class Resp3TcpClient(
 
   lazy val socket: Either[Throwable, Socket] = (host, port) match {
     case (Some(h), Some(p)) =>
-      logger.debug("Opening connection {}:{}", h, p); Right(new Socket(h, p))
+      logger.debug("Opening connection {}:{}", h, p)
+      Right(new Socket(h, p))
     case _ => Left(Throwable("Host and/or port not valid"))
-  }
+  } map( s => {
+
+    // Gossip in order to register the client with RESP3 Protocol
+    s.getOutputStream().write(Resp3Serialization.toCommand("HELLO 3"))
+    s.getOutputStream().flush()
+
+    val input = s.getInputStream()
+    val res = collectResponseToResp3Type(s.getInputStream())
+
+    s
+  })
 
   def sendAndWaitResponse(
       input: Array[Byte]
@@ -40,6 +51,9 @@ class Resp3TcpClient(
 
   def sendAndWaitResponse(input: String): IO[Either[Throwable, Type[?]]] =
     this.sendAndWaitResponse(Resp3Serialization.toCommand(input))
+
+  def sendAndWaitResponseSync(input: String): Either[Throwable, Type[?]] =
+    this.sendAndWaitResponse(input).get
 
   def collectResponseToResp3Type(
       input: InputStream

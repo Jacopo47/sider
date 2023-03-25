@@ -7,6 +7,7 @@ import com.sider.Resp3Serialization.RN
 import com.sider.Resp3Serialization.R
 import com.sider.Resp3Serialization.N
 import collection.Map
+import com.sider.Resp3Serialization.RNa
 
 object Identifiers {
   val BlobString = Some('$'.toByte)
@@ -284,7 +285,9 @@ case class Number(raw: LazyList[Byte]) extends SimpleType[Long] {
 case class Null(raw: LazyList[Byte]) extends SimpleType[String] {
   override def identifier: Option[Byte] = Identifiers.Number
 
-  override val value: Either[Throwable, String] = Right("Nil")
+  override val value: Either[Throwable, String] = Right(Resp3Serialization)
+      .map(_.takeFirstElement(raw))
+      .map(_ => "Nil")
 }
 
 case class Resp3Double(raw: LazyList[Byte]) extends SimpleType[Double] {
