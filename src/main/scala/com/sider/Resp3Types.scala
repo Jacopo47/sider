@@ -283,7 +283,7 @@ case class Number(raw: LazyList[Byte]) extends SimpleType[Long] {
 }
 
 case class Null(raw: LazyList[Byte]) extends SimpleType[String] {
-  override def identifier: Option[Byte] = Identifiers.Number
+  override def identifier: Option[Byte] = Identifiers.Null
 
   override val value: Either[Throwable, String] = Right(Resp3Serialization)
       .map(_.takeFirstElement(raw))
