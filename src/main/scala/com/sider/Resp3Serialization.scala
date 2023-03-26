@@ -97,10 +97,16 @@ object Resp3Serialization {
    * Transforms the input string in a Resp3 Array. </p> It splits element by
    * whitespace. If a single element is passed. Treats the input already
    * splitted if more than 1 elements is passed.
+   *
+   * <b>IMPORTANT:</b> Prefer passing arguments by Array of elements since the
+   * split logic is dummy right now and some scenarios (like whitespace in a
+   * string) are not supported. "The dummy version" could be useful for testing
+   * purposes right now. And probably will be removed in future.
    */
   def toCommand(input: String*): Array[Byte] =
     logger.debug("Preparing command: {}", input)
-    val elements = if input.size == 1 then input(0).split(" ") else input.toArray
+    val elements =
+      if input.size == 1 then input(0).split(" ") else input.toArray
 
     val bytes: Array[Byte] = elements
       .filter(_ != null)

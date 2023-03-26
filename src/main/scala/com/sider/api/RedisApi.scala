@@ -21,7 +21,7 @@ sealed trait RedisCommandsByType {}
  */
 trait StringCommands extends RedisCommandsByType {
 
-  def append(key: String, value: String): Either[Throwable, String]
+  def append(key: String, value: String): Either[Throwable, Long]
 
   def set(
       key: String,

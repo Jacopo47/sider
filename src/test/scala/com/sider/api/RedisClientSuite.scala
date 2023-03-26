@@ -41,4 +41,14 @@ class RedisClientSuite extends munit.FunSuite {
     assertEquals(c.strings.decrBy("foo", -22L), Right(20L))
 
   }
+
+  test("APPEND") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.strings
+
+    assertEquals(cmd.append("append:foo", "Hello"), Right(5L))
+    assertEquals(cmd.append("append:foo", " World"), Right(11L))
+    assertEquals(cmd.get("append:foo"), Right("Hello World"))
+    
+  }
 }
