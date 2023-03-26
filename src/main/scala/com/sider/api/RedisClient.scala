@@ -81,12 +81,19 @@ class BasicStringCommands(
       case _                 => Left(ResponseNotMappedError())
     }
 
-  override def decrBy(key: String, decrement: Long): Either[Throwable, Long] =
-    ???
-
   override def strlen(key: String): Either[Throwable, Long] = ???
 
-  override def decr(key: String): Either[Throwable, Long] = ???
+  override def decr(key: String): Either[Throwable, Long] =     
+    tcp.sendAndWaitResponseSync(s"DECR $key") flatMap {
+      case v: com.sider.Number => v.value
+      case _                   => Left(ResponseNotMappedError())
+    }
+
+  override def decrBy(key: String, decrement: Long): Either[Throwable, Long] =
+    tcp.sendAndWaitResponseSync(s"DECRBY $key $decrement") flatMap {
+      case v: com.sider.Number => v.value
+      case _                   => Left(ResponseNotMappedError())
+    }
 
   override def getEx(
       key: String,
