@@ -24,12 +24,6 @@ class BasicStringCommands(
     val tcp: Resp3TcpClient
 ) extends StringCommands {
 
-  def genericErrorHandler[A]: PartialFunction[Type[?], Either[Throwable, A]] = {
-    case e: SimpleError => e.value.flatMap(error => Left(Throwable(error)))
-    case e: BlobError => e.value.flatMap(error => Left(Throwable(error)))
-    case _              => Left(ResponseNotMappedError())
-  }
-
   def sendCommandWithGenericErrorHandler[A](
       command: Array[?]
   )(handler: PartialFunction[Type[?], Either[Throwable, A]]) =

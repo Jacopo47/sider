@@ -1,23 +1,32 @@
 package com.sider.api
 
 import scala.util.Try
+import com.sider.Type
+import com.sider.SimpleError
+import com.sider.BlobError
 
 trait RedisApi {
   val strings: StringCommands
 }
 
-sealed trait RedisCommandsByType {}
+sealed trait RedisCommandsByType {
+  def genericErrorHandler[A]: PartialFunction[Type[?], Either[Throwable, A]] = {
+    case e: SimpleError => e.value.flatMap(error => Left(Throwable(error)))
+    case e: BlobError   => e.value.flatMap(error => Left(Throwable(error)))
+    case _              => Left(ResponseNotMappedError())
+  }
+}
 
 /**
- * These API aim to be transparent as much as possible. 
- * So, until something different is explicit specified by the doc all these method are just utilities in order to call
- * "plain" Redis command. Refer to Redis' commands documentation for details about command's behavior.
- * 
- * </p>
- * Note: </p>
- * 1. LCS not supported right now. </p>
- * 2. SUBSTR is not covered because deprecated in favour of GETRANGE. </p>
- * 3. SETEX, GETSET, SETNX, PSETEX not covered in favour of SET with related flags </p>
+ * These API aim to be transparent as much as possible. So, until something
+ * different is explicit specified by the doc all these method are just
+ * utilities in order to call "plain" Redis command. Refer to Redis' commands
+ * documentation for details about command's behavior.
+ *
+ * </p> Note: </p>
+ *   1. LCS not supported right now. </p> 2. SUBSTR is not covered because
+ *      deprecated in favour of GETRANGE. </p> 3. SETEX, GETSET, SETNX, PSETEX
+ *      not covered in favour of SET with related flags </p>
  */
 trait StringCommands extends RedisCommandsByType {
 
@@ -35,7 +44,11 @@ trait StringCommands extends RedisCommandsByType {
       keepttl: Boolean = false,
       get: Boolean = false
   ): Either[Throwable, String]
-  def setRange(key: String, offset: Long, value: String): Either[Throwable, Long]
+  def setRange(
+      key: String,
+      offset: Long,
+      value: String
+  ): Either[Throwable, Long]
 
   def get(key: String): Either[Throwable, String]
   def getDel(key: String): Either[Throwable, String]
@@ -59,7 +72,7 @@ trait StringCommands extends RedisCommandsByType {
   def strlen(key: String): Either[Throwable, Long]
 
   def mget(keys: String*): Either[Throwable, Seq[String]]
-  def mset(entries: Map[String,String]): Either[Throwable, String]
+  def mset(entries: Map[String, String]): Either[Throwable, String]
   def msetNx(entries: Map[String, String]): Either[Throwable, Long]
 
 }
