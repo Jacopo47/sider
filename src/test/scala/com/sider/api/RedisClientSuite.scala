@@ -24,6 +24,10 @@ class RedisClientSuite extends munit.FunSuite {
     assertEquals(c.strings.get("foo1"), Left(KeyNotFound()))
     assertEquals(c.strings.set("foo1", "bar"), Right("OK"))
     assertEquals(c.strings.get("foo1"), Right("bar"))
+
+    assertEquals(c.strings.getDel("foo1"), Right("bar"))
+    assertEquals(c.strings.getDel("foo1"), Left(KeyNotFound()))
+    
   }
 
   test("INCR* AND DECR*") {
