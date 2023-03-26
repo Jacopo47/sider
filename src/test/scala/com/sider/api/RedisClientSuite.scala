@@ -27,7 +27,7 @@ class RedisClientSuite extends munit.FunSuite {
 
     assertEquals(c.strings.getDel("foo1"), Right("bar"))
     assertEquals(c.strings.getDel("foo1"), Left(KeyNotFound()))
-    
+
   }
 
   test("INCR* AND DECR*") {
@@ -53,15 +53,31 @@ class RedisClientSuite extends munit.FunSuite {
     assertEquals(cmd.append("append:foo", "Hello"), Right(5L))
     assertEquals(cmd.append("append:foo", " World"), Right(11L))
     assertEquals(cmd.get("append:foo"), Right("Hello World"))
-    
+
   }
 
-    test("STRLEN") {
+  test("STRLEN") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
     val cmd = c.strings
 
     assertEquals(cmd.set("strlen:foo", "Hello world"), Right("OK"))
     assertEquals(cmd.strlen("strlen:foo"), Right(11L))
     assertEquals(cmd.strlen("nonexisting"), Right(0L))
+  }
+
+  test("MSET AND MGET") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.strings
+
+    assert(cmd.mset(Map.empty).isLeft)
+    assertEquals(cmd.mset(Map("mset:a" -> "a", "mset:b" -> "b")), Right("OK"))
+    assertEquals(cmd.get("mset:a"), Right("a"))
+    assertEquals(cmd.get("mset:b"), Right("b"))
+
+    assertEquals(cmd.mget("mset:a", "mset:b"), Right(Seq("a", "b")))
+    assertEquals(cmd.mget("mset:a", "mset:b", "nonexisting"), Right(Seq("a", "b", null)))
+
+
+    
   }
 }

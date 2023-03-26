@@ -287,7 +287,7 @@ case class Null(raw: LazyList[Byte]) extends SimpleType[String] {
 
   override val value: Either[Throwable, String] = Right(Resp3Serialization)
       .map(_.takeFirstElement(raw))
-      .map(_ => "Nil")
+      .map(_ => null)
 }
 
 case class Resp3Double(raw: LazyList[Byte]) extends SimpleType[Double] {

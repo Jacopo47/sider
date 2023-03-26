@@ -6,6 +6,7 @@ import com.sider.SimpleString
 import com.sider.BlobString
 import com.sider.SimpleError
 import com.sider.BlobError
+import com.sider.Resp3Array
 
 case class ResponseNotMappedError() extends Throwable
 case class KeyNotFound() extends Throwable
@@ -38,7 +39,12 @@ class BasicStringCommands(
   ): Either[Throwable, Long] = ???
 
   override def mset(entries: Map[String, String]): Either[Throwable, String] =
-    ???
+    val command = entries
+      .toArray
+      .flatMap(e => Array(e._1, e._2))
+    sendCommandWithGenericErrorHandler("MSET" +: command) {
+      case v: com.sider.SimpleString => v.value
+    }
 
   override def incr(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("INCR", key)) {
@@ -122,7 +128,9 @@ class BasicStringCommands(
       v.value
     }
 
-  override def mget(keys: String*): Either[Throwable, Seq[String]] = ???
+  override def mget(keys: String*): Either[Throwable, Seq[Any]] = sendCommandWithGenericErrorHandler("MGET" +: keys.toArray) { case v: Resp3Array =>
+      v.value
+    }
 
   override def getDel(key: String): Either[Throwable, String] =
     sendCommandWithGenericErrorHandler(Array("GETDEL", key)) {
