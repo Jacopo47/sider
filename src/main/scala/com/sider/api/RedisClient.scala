@@ -1,11 +1,11 @@
 package com.sider.api
 
 import com.sider.network.Resp3TcpClient
-import com.sider.concurrency.IO
 import com.sider.Type
 import com.sider.SimpleString
 import com.sider.BlobString
 import com.sider.SimpleError
+import com.sider.BlobError
 
 case class ResponseNotMappedError() extends Throwable
 case class KeyNotFound() extends Throwable
@@ -18,30 +18,31 @@ class RedisClient(
   override val strings: StringCommands = new BasicStringCommands(tcpClient)
 
   lazy val tcpClient: Resp3TcpClient = new Resp3TcpClient(host, port)
-
-  def set(key: String, value: String): IO[Either[Throwable, String]] =
-    tcpClient.sendAndWaitResponse(s"SET $key $value") map {
-      case Right(v: SimpleString) => v.value
-      case _                      => Right("")
-    }
-
-  def get(key: String): IO[Either[Throwable, String]] = {
-    tcpClient.sendAndWaitResponse(s"GET $key") map {
-      case Right(v: SimpleString) => v.value
-      case Right(v: BlobString)   => v.value
-      case _                      => Right("")
-    }
-  }
 }
-
-// TODO Find a way a clever to map SimpleError / BlobError to Left(Throwable())
 
 class BasicStringCommands(
     val tcp: Resp3TcpClient
 ) extends StringCommands {
 
-  override def append(key: String, value: String): Either[Throwable, String] =
-    ???
+  def genericErrorHandler[A]: PartialFunction[Type[?], Either[Throwable, A]] = {
+    case e: SimpleError => e.value.flatMap(error => Left(Throwable(error)))
+    case e: BlobError => e.value.flatMap(error => Left(Throwable(error)))
+    case _              => Left(ResponseNotMappedError())
+  }
+
+  def sendCommandWithGenericErrorHandler[A](
+      command: Array[?]
+  )(handler: PartialFunction[Type[?], Either[Throwable, A]]) =
+    tcp
+      .sendAndWaitResponseSync(command map (_.toString()): _*)
+      .flatMap {
+        handler orElse genericErrorHandler
+      }
+
+  override def append(key: String, value: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("APPEND", key, value)) {
+      case n: com.sider.Number => n.value
+    }
 
   override def setRange(
       key: String,
@@ -53,46 +54,42 @@ class BasicStringCommands(
     ???
 
   override def incr(key: String): Either[Throwable, Long] =
-    tcp.sendAndWaitResponseSync(s"INCR $key") flatMap {
+    sendCommandWithGenericErrorHandler(Array("INCR", key)) {
       case v: com.sider.Number => v.value
-      case _                   => Left(ResponseNotMappedError())
     }
 
   override def incrBy(key: String, increment: Long): Either[Throwable, Long] =
-    tcp.sendAndWaitResponseSync(s"INCRBY $key $increment") flatMap {
+    sendCommandWithGenericErrorHandler(Array("INCRBY", key, increment)) {
       case v: com.sider.Number => v.value
-      case _                   => Left(ResponseNotMappedError())
     }
 
   override def incrByFloat(
       key: String,
       increment: Double
   ): Either[Throwable, Double] =
-    tcp.sendAndWaitResponseSync(s"INCRBYFLOAT $key $increment") flatMap {
+    sendCommandWithGenericErrorHandler(Array("INCRBYFLOAT", key, increment)) {
       case v: BlobString => v.value map { _.toDouble }
-      case _             => Left(ResponseNotMappedError())
     }
 
   override def get(key: String): Either[Throwable, String] =
-    tcp.sendAndWaitResponseSync(s"GET $key") flatMap {
+    sendCommandWithGenericErrorHandler(Array("GET", key)) {
       case v: SimpleString   => v.value
       case v: BlobString     => v.value
       case v: com.sider.Null => Left(KeyNotFound())
-      case _                 => Left(ResponseNotMappedError())
+
     }
 
   override def strlen(key: String): Either[Throwable, Long] = ???
 
-  override def decr(key: String): Either[Throwable, Long] =     
-    tcp.sendAndWaitResponseSync(s"DECR $key") flatMap {
+  override def decr(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("DECR", key)) {
       case v: com.sider.Number => v.value
-      case _                   => Left(ResponseNotMappedError())
+
     }
 
   override def decrBy(key: String, decrement: Long): Either[Throwable, Long] =
-    tcp.sendAndWaitResponseSync(s"DECRBY $key $decrement") flatMap {
+    sendCommandWithGenericErrorHandler(Array("DECRBY", key, decrement)) {
       case v: com.sider.Number => v.value
-      case _                   => Left(ResponseNotMappedError())
     }
 
   override def getEx(
@@ -116,7 +113,7 @@ class BasicStringCommands(
       keepttl: Boolean,
       get: Boolean
   ): Either[Throwable, String] =
-    val command: Seq[String] = Seq(
+    val command = Array(
       "SET",
       key,
       value,
@@ -131,9 +128,8 @@ class BasicStringCommands(
     )
       .filter(_ != null)
 
-    tcp.sendAndWaitResponseSync(command: _*) flatMap {
+    sendCommandWithGenericErrorHandler(command) {
       case v: SimpleString => v.value
-      case _               => Left(ResponseNotMappedError())
     }
 
   override def mget(keys: String*): Either[Throwable, Seq[String]] = ???
