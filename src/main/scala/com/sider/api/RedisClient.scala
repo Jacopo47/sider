@@ -66,7 +66,10 @@ class BasicStringCommands(
 
     }
 
-  override def strlen(key: String): Either[Throwable, Long] = ???
+  override def strlen(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("STRLEN", key)) {
+      case v: com.sider.Number => v.value
+    }
 
   override def decr(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("DECR", key)) {
@@ -115,16 +118,17 @@ class BasicStringCommands(
     )
       .filter(_ != null)
 
-    sendCommandWithGenericErrorHandler(command) {
-      case v: SimpleString => v.value
+    sendCommandWithGenericErrorHandler(command) { case v: SimpleString =>
+      v.value
     }
 
   override def mget(keys: String*): Either[Throwable, Seq[String]] = ???
 
-  override def getDel(key: String): Either[Throwable, String] = sendCommandWithGenericErrorHandler(Array("GETDEL", key)) {
-    case v: BlobString => v.value
-    case v: com.sider.Null => Left(KeyNotFound())
-  }
+  override def getDel(key: String): Either[Throwable, String] =
+    sendCommandWithGenericErrorHandler(Array("GETDEL", key)) {
+      case v: BlobString     => v.value
+      case v: com.sider.Null => Left(KeyNotFound())
+    }
 
   override def msetNx(entries: Map[String, String]): Either[Throwable, Long] =
     ???

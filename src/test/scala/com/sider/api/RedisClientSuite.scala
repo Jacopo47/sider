@@ -55,4 +55,13 @@ class RedisClientSuite extends munit.FunSuite {
     assertEquals(cmd.get("append:foo"), Right("Hello World"))
     
   }
+
+    test("STRLEN") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.strings
+
+    assertEquals(cmd.set("strlen:foo", "Hello world"), Right("OK"))
+    assertEquals(cmd.strlen("strlen:foo"), Right(11L))
+    assertEquals(cmd.strlen("nonexisting"), Right(0L))
+  }
 }
