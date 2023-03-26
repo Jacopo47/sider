@@ -4,6 +4,7 @@ import scala.util.Try
 import com.sider.Type
 import com.sider.SimpleError
 import com.sider.BlobError
+import com.sider.network.Resp3TcpClient
 
 trait RedisApi {
   val strings: StringCommands
@@ -15,6 +16,15 @@ sealed trait RedisCommandsByType {
     case e: BlobError   => e.value.flatMap(error => Left(Throwable(error)))
     case _              => Left(ResponseNotMappedError())
   }
+
+  def sendCommandWithGenericErrorHandler[A](
+      command: Array[?]
+  )(handler: PartialFunction[Type[?], Either[Throwable, A]])(using tcp: Resp3TcpClient) =
+    tcp
+      .sendAndWaitResponseSync(command map (_.toString()): _*)
+      .flatMap {
+        handler orElse genericErrorHandler
+      }
 }
 
 /**

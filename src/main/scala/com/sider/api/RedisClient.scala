@@ -24,14 +24,7 @@ class BasicStringCommands(
     val tcp: Resp3TcpClient
 ) extends StringCommands {
 
-  def sendCommandWithGenericErrorHandler[A](
-      command: Array[?]
-  )(handler: PartialFunction[Type[?], Either[Throwable, A]]) =
-    tcp
-      .sendAndWaitResponseSync(command map (_.toString()): _*)
-      .flatMap {
-        handler orElse genericErrorHandler
-      }
+  given global: Resp3TcpClient = tcp
 
   override def append(key: String, value: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("APPEND", key, value)) {
@@ -128,7 +121,10 @@ class BasicStringCommands(
 
   override def mget(keys: String*): Either[Throwable, Seq[String]] = ???
 
-  override def getDel(key: String): Either[Throwable, String] = ???
+  override def getDel(key: String): Either[Throwable, String] = sendCommandWithGenericErrorHandler(Array("GETDEL", key)) {
+    case v: BlobString => v.value
+    case v: com.sider.Null => Left(KeyNotFound())
+  }
 
   override def msetNx(entries: Map[String, String]): Either[Throwable, Long] =
     ???
