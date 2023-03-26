@@ -23,7 +23,7 @@ class Resp3TcpClient(
       logger.debug("Opening connection {}:{}", h, p)
       Right(new Socket(h, p))
     case _ => Left(Throwable("Host and/or port not valid"))
-  } map( s => {
+  } map (s => {
 
     // Gossip in order to register the client with RESP3 Protocol
     s.getOutputStream().write(Resp3Serialization.toCommand("HELLO 3"))
@@ -39,22 +39,24 @@ class Resp3TcpClient(
       input: Array[Byte]
   ): IO[Either[Throwable, Type[?]]] =
     IO {
-      for {
-        s <- socket
-        _ <- Right(logger.debug("Sending bytes {}", input))
-        _ <- Right(s.getOutputStream().write(input))
-        _ <- Right(s.getOutputStream().flush())
-        _ <- Right(logger.debug("Listening for bytes.."))
-        res <- collectResponseToResp3Type(s.getInputStream())
-        _ <- Right(logger.debug("Here some bytes {}", res))
-      } yield res
+      this.synchronized {
+        for {
+          s <- socket
+          _ <- Right(logger.debug("Sending bytes {}", input))
+          _ <- Right(s.getOutputStream().write(input))
+          _ <- Right(s.getOutputStream().flush())
+          _ <- Right(logger.debug("Listening for bytes.."))
+          res <- collectResponseToResp3Type(s.getInputStream())
+          _ <- Right(logger.debug("Here some bytes {}", res))
+        } yield res
+      }
     }
 
   def sendAndWaitResponse(input: String*): IO[Either[Throwable, Type[?]]] =
-    this.sendAndWaitResponse(Resp3Serialization.toCommand(input:_*))
+    this.sendAndWaitResponse(Resp3Serialization.toCommand(input: _*))
 
   def sendAndWaitResponseSync(input: String*): Either[Throwable, Type[?]] =
-    this.sendAndWaitResponse(input:_*).get
+    this.sendAndWaitResponse(input: _*).get
 
   def collectResponseToResp3Type(
       input: InputStream
