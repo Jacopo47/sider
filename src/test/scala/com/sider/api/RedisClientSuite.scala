@@ -35,5 +35,10 @@ class RedisClientSuite extends munit.FunSuite {
     assertEquals(c.strings.incrByFloat("foo", 1.2), Right(21.2))
     assertEquals(c.strings.incrByFloat("foo", -21.2), Right(0.0))
     assertEquals(c.strings.get("foo"), Right("0"))
+
+    assertEquals(c.strings.decr("foo"), Right(-1L))
+    assertEquals(c.strings.decrBy("foo", 1L), Right(-2L))
+    assertEquals(c.strings.decrBy("foo", -22L), Right(20L))
+
   }
 }
