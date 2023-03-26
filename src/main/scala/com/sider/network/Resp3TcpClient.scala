@@ -39,6 +39,10 @@ class Resp3TcpClient(
       input: Array[Byte]
   ): IO[Either[Throwable, Type[?]]] =
     IO {
+      /*
+        Wrapped in a synchronized block because still not sure about what it could happen if the in/out stream is accessed concurrently.
+        This need to be cover with dedicated and detailed testing in order to be sure about what happens is critical edge cases.
+      */
       this.synchronized {
         for {
           s <- socket
