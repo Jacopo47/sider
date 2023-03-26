@@ -99,7 +99,7 @@ class TypesSuite extends munit.FunSuite {
       case _                          => Left(Throwable("Unexpected type"))
 
     assert(test.isRight)
-    assertEquals(test.flatMap(e => e.value), Right("Nil"))
+    assertEquals(test.flatMap(e => e.value), Right(null))
   }
 
   test("Double") {

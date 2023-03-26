@@ -81,7 +81,7 @@ trait StringCommands extends RedisCommandsByType {
 
   def strlen(key: String): Either[Throwable, Long]
 
-  def mget(keys: String*): Either[Throwable, Seq[String]]
+  def mget(keys: String*): Either[Throwable, Seq[Any]]
   def mset(entries: Map[String, String]): Either[Throwable, String]
   def msetNx(entries: Map[String, String]): Either[Throwable, Long]
 
