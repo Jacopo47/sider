@@ -32,12 +32,6 @@ class BasicStringCommands(
       case n: com.sider.Number => n.value
     }
 
-  override def setRange(
-      key: String,
-      offset: Long,
-      value: String
-  ): Either[Throwable, Long] = ???
-
   override def incr(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("INCR", key)) {
       case v: com.sider.Number => v.value
@@ -145,12 +139,22 @@ class BasicStringCommands(
     sendCommandWithGenericErrorHandler("MSETNX" +: command) {
       case v: com.sider.Number => v.value
     }
+
+  override def setRange(
+      key: String,
+      offset: Long,
+      value: String
+  ): Either[Throwable, Long] = sendCommandWithGenericErrorHandler(Array("SETRANGE", key, offset, value)) {
+    case v: com.sider.Number => v.value
+  }
     
 
   override def getRange(
       key: String,
       start: Long,
       end: Long
-  ): Either[Throwable, String] = ???
+  ): Either[Throwable, String] = sendCommandWithGenericErrorHandler(Array("GETRANGE", key, start, end)) {
+    case v: BlobString => v.value
+  }
 
 }
