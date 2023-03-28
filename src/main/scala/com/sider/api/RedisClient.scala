@@ -38,14 +38,6 @@ class BasicStringCommands(
       value: String
   ): Either[Throwable, Long] = ???
 
-  override def mset(entries: Map[String, String]): Either[Throwable, String] =
-    val command = entries
-      .toArray
-      .flatMap(e => Array(e._1, e._2))
-    sendCommandWithGenericErrorHandler("MSET" +: command) {
-      case v: com.sider.SimpleString => v.value
-    }
-
   override def incr(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("INCR", key)) {
       case v: com.sider.Number => v.value
@@ -124,12 +116,12 @@ class BasicStringCommands(
     )
       .filter(_ != null)
 
-    sendCommandWithGenericErrorHandler(command) { case v: SimpleString =>
-      v.value
+    sendCommandWithGenericErrorHandler(command) { 
+      case v: SimpleString => v.value
     }
 
-  override def mget(keys: String*): Either[Throwable, Seq[Any]] = sendCommandWithGenericErrorHandler("MGET" +: keys.toArray) { case v: Resp3Array =>
-      v.value
+  override def mget(keys: String*): Either[Throwable, Seq[Any]] = sendCommandWithGenericErrorHandler("MGET" +: keys.toArray) { 
+      case v: Resp3Array => v.value
     }
 
   override def getDel(key: String): Either[Throwable, String] =
@@ -138,8 +130,22 @@ class BasicStringCommands(
       case v: com.sider.Null => Left(KeyNotFound())
     }
 
+  override def mset(entries: Map[String, String]): Either[Throwable, String] =
+    val command = entries
+      .toArray
+      .flatMap(e => Array(e._1, e._2))
+    sendCommandWithGenericErrorHandler("MSET" +: command) {
+      case v: com.sider.SimpleString => v.value
+    }
+
   override def msetNx(entries: Map[String, String]): Either[Throwable, Long] =
-    ???
+    val command = entries
+      .toArray
+      .flatMap(e => Array(e._1, e._2))
+    sendCommandWithGenericErrorHandler("MSETNX" +: command) {
+      case v: com.sider.Number => v.value
+    }
+    
 
   override def getRange(
       key: String,
