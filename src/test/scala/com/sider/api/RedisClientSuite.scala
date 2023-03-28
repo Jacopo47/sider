@@ -78,6 +78,7 @@ class RedisClientSuite extends munit.FunSuite {
     assertEquals(cmd.mget("mset:a", "mset:b", "nonexisting"), Right(Seq("a", "b", null)))
 
 
-    
+    assertEquals(cmd.msetNx(Map("msetnx:a" -> "a", "msetnx:b" -> "b")), Right(1L))
+    assertEquals(cmd.msetNx(Map("msetnx:a" -> "a", "msetnx:c" -> "c")), Right(0L))
   }
 }
