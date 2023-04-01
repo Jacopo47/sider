@@ -6,8 +6,15 @@ import com.sider.SimpleError
 import com.sider.BlobError
 import com.sider.network.Resp3TcpClient
 
+/**
+ * These API aim to be transparent as much as possible. So, until something
+ * different is explicit specified by the doc all these method are just
+ * utilities in order to call "plain" Redis command. Refer to Redis' commands
+ * documentation for details about command's behavior.
+ */
 trait RedisApi {
   val strings: StringCommands
+  val keys: KeyCommands
 }
 
 sealed trait RedisCommandsByType {
@@ -19,7 +26,9 @@ sealed trait RedisCommandsByType {
 
   def sendCommandWithGenericErrorHandler[A](
       command: Array[?]
-  )(handler: PartialFunction[Type[?], Either[Throwable, A]])(using tcp: Resp3TcpClient) =
+  )(
+      handler: PartialFunction[Type[?], Either[Throwable, A]]
+  )(using tcp: Resp3TcpClient) =
     tcp
       .sendAndWaitResponseSync(command map (_.toString()): _*)
       .flatMap {
@@ -27,12 +36,42 @@ sealed trait RedisCommandsByType {
       }
 }
 
+trait KeyCommands extends RedisCommandsByType {
+  def copy(source: String, dest: String, db: Option[String] = None, replace: Boolean = false): Either[Throwable, Long]
+  def del(key: String*): Either[Throwable, Long]
+  def dump(key: String): Either[Throwable, String]
+  def exists(key: String*): Either[Throwable, Long]
+  def expire = ???
+  def expireAt = ???
+  def expireTime = ???
+  def keys = ???
+  def migrate = ???
+  def move = ???
+  def objectEncoding = ???
+  def objectFreq = ???
+  def objectIdleTime = ???
+  def objectRefCount = ???
+  def persist = ???
+  def pExpire = ???
+  def pExpireAt = ???
+  def pExpireTime = ???
+  def pTtl = ???
+  def randomKey = ???
+  def rename = ???
+  def renameNx = ???
+  def restore(key: String, serializedValue: String, ttl: Option[Long] = Some(0), replace: Boolean = false, absTtl: Boolean = false, idleTime: Option[Long] = None, freq: Option[Long] = None): Either[Throwable, String]
+  def scan = ???
+  def sort = ???
+  def sortRo = ???
+  def touch = ???
+  def ttl = ???
+  def type_ = ???
+  def unlink = ???
+  def wait_ = ???
+  def waitAof = ???
+}
+
 /**
- * These API aim to be transparent as much as possible. So, until something
- * different is explicit specified by the doc all these method are just
- * utilities in order to call "plain" Redis command. Refer to Redis' commands
- * documentation for details about command's behavior.
- *
  * </p> Note: </p>
  *   1. LCS not supported right now. </p> 2. SUBSTR is not covered because
  *      deprecated in favour of GETRANGE. </p> 3. SETEX, GETSET, SETNX, PSETEX
