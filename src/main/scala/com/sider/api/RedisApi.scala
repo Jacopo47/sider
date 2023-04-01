@@ -67,7 +67,7 @@ trait StringCommands extends RedisCommandsByType {
       ex: Option[Long] = None,
       px: Option[Long] = None,
       exat: Option[Long] = None,
-      paxt: Option[Long] = None,
+      pxt: Option[Long] = None,
       persist: Boolean = false
   ): Either[Throwable, String]
   def getRange(key: String, start: Long, end: Long): Either[Throwable, String]

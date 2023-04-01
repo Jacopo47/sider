@@ -79,9 +79,24 @@ class BasicStringCommands(
       ex: Option[Long],
       px: Option[Long],
       exat: Option[Long],
-      paxt: Option[Long],
+      pxat: Option[Long],
       persist: Boolean
-  ): Either[Throwable, String] = ???
+  ): Either[Throwable, String] = 
+    val command = Array(
+      Array("GETEX"),
+      Array(key),
+      ex.map(_.toString()).map(Array("EX", _)).getOrElse(null),
+      px.map(_.toString()).map(Array("PX", _)).getOrElse(null),
+      exat.map(_.toString()).map(Array("EXAT", _)).getOrElse(null),
+      pxat.map(_.toString()).map(Array("PXAT", _)).getOrElse(null),
+      if persist then Array("PERSIST") else null
+    )
+      .filter(_ != null)
+      .flatten
+
+    sendCommandWithGenericErrorHandler(command) { 
+      case v: BlobString => v.value
+    }
 
   override def set(
       key: String,
@@ -96,22 +111,24 @@ class BasicStringCommands(
       get: Boolean
   ): Either[Throwable, String] =
     val command = Array(
-      "SET",
-      key,
-      value,
-      if nx then "NX" else null,
-      if xx then "XX" else null,
-      if get then "GET" else null,
-      ex.map(_.toString()).getOrElse(null),
-      px.map(_.toString()).getOrElse(null),
-      exat.map(_.toString()).getOrElse(null),
-      pxat.map(_.toString()).getOrElse(null),
-      if keepttl then "KEEPTTL" else null
+      Array("SET"),
+      Array(key),
+      Array(value),
+      if nx then Array("NX") else null,
+      if xx then Array("XX") else null,
+      if get then Array("GET") else null,
+      ex.map(_.toString()).map(Array("EX", _)).getOrElse(null),
+      px.map(_.toString()).map(Array("PX", _)).getOrElse(null),
+      exat.map(_.toString()).map(Array("EXAT", _)).getOrElse(null),
+      pxat.map(_.toString()).map(Array("PXAT", _)).getOrElse(null),
+      if keepttl then Array("KEEPTTL") else null
     )
       .filter(_ != null)
+      .flatten
 
     sendCommandWithGenericErrorHandler(command) { 
       case v: SimpleString => v.value
+      case v: BlobString => v.value
     }
 
   override def mget(keys: String*): Either[Throwable, Seq[Any]] = sendCommandWithGenericErrorHandler("MGET" +: keys.toArray) { 

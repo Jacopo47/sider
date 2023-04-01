@@ -16,6 +16,7 @@ class RedisClientSuite extends munit.FunSuite {
 
   test("SET and GET") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.strings
 
     val app = c.strings.set("foo", "bar")
 
@@ -27,6 +28,12 @@ class RedisClientSuite extends munit.FunSuite {
 
     assertEquals(c.strings.getDel("foo1"), Right("bar"))
     assertEquals(c.strings.getDel("foo1"), Left(KeyNotFound()))
+
+    assertEquals(cmd.set("getex:foo", "Hello World", ex = Some(360L)), Right("OK"))
+    assertEquals(cmd.getEx("getex:foo"), Right("Hello World"))
+    assertEquals(cmd.getEx("getex:foo", ex = Some(120L)), Right("Hello World"))
+    assertEquals(cmd.getEx("getex:foo", px = Some(120000L)), Right("Hello World"))   
+    assert(cmd.getEx("getex:foo", ex = Some(120L), px = Some(120000L)).isLeft)   
   }
 
   test("INCR* AND DECR*") {
