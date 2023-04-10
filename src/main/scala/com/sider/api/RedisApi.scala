@@ -39,7 +39,7 @@ sealed trait RedisCommandsByType {
 trait KeyCommands extends RedisCommandsByType {
   def copy(source: String, dest: String, db: Option[String] = None, replace: Boolean = false): Either[Throwable, Long]
   def del(key: String*): Either[Throwable, Long]
-  def dump(key: String): Either[Throwable, String]
+  def dump(key: String): Either[Throwable, Array[Byte]]
   def exists(key: String*): Either[Throwable, Long]
   def expire = ???
   def expireAt = ???
@@ -59,7 +59,7 @@ trait KeyCommands extends RedisCommandsByType {
   def randomKey = ???
   def rename = ???
   def renameNx = ???
-  def restore(key: String, serializedValue: String, ttl: Option[Long] = Some(0), replace: Boolean = false, absTtl: Boolean = false, idleTime: Option[Long] = None, freq: Option[Long] = None): Either[Throwable, String]
+  def restore(key: String, serializedValue: Array[Byte], ttl: Option[Long] = Some(0), replace: Boolean = false, absTtl: Boolean = false, idleTime: Option[Long] = None, freq: Option[Long] = None): Either[Throwable, String]
   def scan = ???
   def sort = ???
   def sortRo = ???

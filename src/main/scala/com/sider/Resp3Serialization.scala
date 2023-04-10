@@ -108,16 +108,20 @@ object Resp3Serialization {
     val elements =
       if input.size == 1 then input(0).split(" ") else input.toArray
 
-    val bytes: Array[Byte] = elements
+    val bytes: Array[Array[Byte]] = elements
       .filter(_ != null)
       .map(_.getBytes())
-      .flatMap(e =>
+
+    this.toCommandFromBytes(bytes : _*)
+
+  def toCommandFromBytes(input: Array[Byte]*): Array[Byte] =
+    val bytes = input.flatMap(e =>
         Array(
           Identifiers.BlobString.get
         ) ++ e.length.getBytes ++ RNa ++ e ++ RNa
       )
-
+    
     Array(
       Identifiers.Array.get
-    ) ++ elements.length.getBytes ++ RNa ++ bytes ++ RNa
+    ) ++ input.length.getBytes ++ RNa ++ bytes ++ RNa
 }
