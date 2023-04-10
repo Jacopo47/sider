@@ -34,10 +34,14 @@ class KeyCommandsSuite extends munit.FunSuite {
     c.strings.set("dump:foo", "bar")
     val dumped = cmd.dump("dump:foo")
     assertEquals(cmd.del("dump:foo"), Right(1L))
-    val restored = cmd.restore("dump:foo", dumped.getOrElse(Array.empty[Byte])) 
-    assertEquals(restored, Right("OK"))
+    assertEquals(cmd.restore("dump:foo", dumped.getOrElse(Array.empty[Byte])), Right("OK"))
     assertEquals(c.strings.get("dump:foo"), Right("bar"))
 
+    val dumped1 = cmd.dump("dump:foo").getOrElse(Array.empty[Byte])
+    assertEquals(cmd.del("dump:foo"), Right(1L))
+    
+    assertEquals(cmd.restore("dump:foo", dumped1, ttl = Some(300L), replace = true, freq = Some(200L)),Right("OK"))
+    assertEquals(c.strings.get("dump:foo"), Right("bar"))
   }
   
 }
