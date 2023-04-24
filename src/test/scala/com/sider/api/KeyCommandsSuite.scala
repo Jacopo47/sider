@@ -2,6 +2,11 @@ package com.sider.api
 
 import com.sider.network.RedisServer
 import scala.concurrent.duration.Duration
+import java.util.Date
+import java.time.Instant
+import java.util.Calendar
+import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 
 class KeyCommandsSuite extends munit.FunSuite {
 
@@ -42,6 +47,22 @@ class KeyCommandsSuite extends munit.FunSuite {
     
     assertEquals(cmd.restore("dump:foo", dumped1, ttl = Some(300L), replace = true, freq = Some(200L)),Right("OK"))
     assertEquals(c.strings.get("dump:foo"), Right("bar"))
+  }
+
+  test("EXPIRE* , TTL") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.keys
+
+    c.strings.set("expire:foo", "bar")
+    assertEquals(cmd.ttl("expire:foo"), Right(-1L))
+    assertEquals(cmd.ttl("expire:not_exists"), Right(-2L))
+
+    c.keys.expire("expire:foo", Int.MaxValue.toLong)
+    assert(cmd.ttl("expire:foo").exists(_ > 0))
+
+    val toNextMonth = Instant.now().plus(30, ChronoUnit.DAYS).getEpochSecond()
+    c.keys.expireAt("expire:foo", toNextMonth, Some(com.sider.api.options.XX()))
+    assertEquals(cmd.expireTime("expire:foo"), Right(toNextMonth))
   }
   
 }

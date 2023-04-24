@@ -8,6 +8,7 @@ import com.sider.Resp3Serialization
 import com.sider.Identifiers.SimpleString
 import com.sider.Type
 import com.sider.SimpleString
+import com.sider.api.options.ExpireOption
 
 class BasicKeyCommands(
     val tcp: Resp3TcpClient
@@ -87,4 +88,43 @@ class BasicKeyCommands(
     sendCommandWithGenericErrorHandler("EXISTS" +: key.toArray) {
       case v: com.sider.Number => v.value
     }
+
+  def expire(
+      key: String,
+      seconds: Long,
+      option: Option[ExpireOption] = None
+  ): Either[Throwable, Long] =
+    var command = Array("EXPIRE", key, seconds.toString())
+
+    command =
+      if option.isDefined then command :+ option.map(_.command).get else command
+
+    sendCommandWithGenericErrorHandler(command) { case v: com.sider.Number =>
+      v.value
+    }
+
+  def expireAt(
+      key: String,
+      unixTimeSecond: Long,
+      option: Option[ExpireOption] = None
+  ): Either[Throwable, Long] =
+    var command = Array("EXPIREAT", key, unixTimeSecond.toString())
+
+    command =
+      if option.isDefined then command :+ option.map(_.command).get else command
+
+    sendCommandWithGenericErrorHandler(command) { case v: com.sider.Number =>
+      v.value
+    }
+
+  def expireTime(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("EXPIRETIME", key)) {
+      case v: com.sider.Number => v.value
+    }
+
+  def ttl(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("TTL", key)) {
+      case v: com.sider.Number => v.value
+    }
+
 }
