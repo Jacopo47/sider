@@ -58,7 +58,7 @@ trait KeyCommands extends RedisCommandsByType {
       option: Option[ExpireOption] = None
   ): Either[Throwable, Long]
   def expireTime(key: String): Either[Throwable, Long]
-  def keys = ???
+  def keys(pattern: String): Either[Throwable, Seq[String]]
   def migrate = ???
   def move = ???
   def objectEncoding = ???

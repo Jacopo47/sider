@@ -127,4 +127,9 @@ class BasicKeyCommands(
       case v: com.sider.Number => v.value
     }
 
+  def keys(pattern: String): Either[Throwable, Seq[String]] =
+    sendCommandWithGenericErrorHandler(Array("KEYS", pattern)) {
+      case v: com.sider.Resp3Array => v.value.asInstanceOf[Either[Throwable, Seq[String]]]
+    }
+
 }

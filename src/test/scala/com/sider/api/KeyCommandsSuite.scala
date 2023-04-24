@@ -64,5 +64,18 @@ class KeyCommandsSuite extends munit.FunSuite {
     c.keys.expireAt("expire:foo", toNextMonth, Some(com.sider.api.options.XX()))
     assertEquals(cmd.expireTime("expire:foo"), Right(toNextMonth))
   }
+
+  test("KEYS") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.keys
+
+    c.strings.mset(Map("keys:a" -> "a", "keys:b" -> "b", "keys:c" -> "c", "keys-with-different-pattern:d" -> "d", "keys-with-different-pattern:?" -> "d"))
+
+    assertEquals(cmd.keys("keys*").map(_.size), Right(5))
+    assertEquals(cmd.keys("keys:*").map(_.size), Right(3))
+    assertEquals(cmd.keys("keys-with-different-pattern:?").map(_.size), Right(2))
+    assertEquals(cmd.keys("keys-with-different-pattern:\\?").map(_.size), Right(1))
+    
+  }
   
 }
