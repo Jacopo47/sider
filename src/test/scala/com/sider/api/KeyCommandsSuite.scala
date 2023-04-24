@@ -74,8 +74,21 @@ class KeyCommandsSuite extends munit.FunSuite {
     assertEquals(cmd.keys("keys*").map(_.size), Right(5))
     assertEquals(cmd.keys("keys:*").map(_.size), Right(3))
     assertEquals(cmd.keys("keys-with-different-pattern:?").map(_.size), Right(2))
-    assertEquals(cmd.keys("keys-with-different-pattern:\\?").map(_.size), Right(1))
-    
+    assertEquals(cmd.keys("keys-with-different-pattern:\\?").map(_.size), Right(1)) 
+  }
+
+  test("OBJECT*") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.keys
+
+    c.strings.set("object:a", "a")
+
+    assertEquals(cmd.objectEncoding("object:a"), Right("embstr"))
+    // OBJECT FREQ works only under specific configuration about LFU policies. This is why left is accepted in this test scenario
+    assert(cmd.objectFreq("object:a").isLeft)
+    val app = cmd.objectIdleTime("object:a")
+    assert(cmd.objectIdleTime("object:a").isRight)
+    assertEquals(cmd.objectRefCount("object:a"), Right(1L))
   }
   
 }

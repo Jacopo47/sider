@@ -129,7 +129,26 @@ class BasicKeyCommands(
 
   def keys(pattern: String): Either[Throwable, Seq[String]] =
     sendCommandWithGenericErrorHandler(Array("KEYS", pattern)) {
-      case v: com.sider.Resp3Array => v.value.asInstanceOf[Either[Throwable, Seq[String]]]
+      case v: com.sider.Resp3Array =>
+        v.value.asInstanceOf[Either[Throwable, Seq[String]]]
+    }
+
+  def objectEncoding(key: String): Either[Throwable, String] =
+    sendCommandWithGenericErrorHandler(Array("OBJECT", "ENCODING", key)) {
+      case v: com.sider.BlobString => v.value
+    }
+
+  def objectFreq(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("OBJECT", "FREQ", key)) {
+      case v: com.sider.Number => v.value
+    }
+  def objectIdleTime(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("OBJECT", "IDLETIME", key)) {
+      case v: com.sider.Number => v.value
+    }
+  def objectRefCount(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("OBJECT", "REFCOUNT", key)) {
+      case v: com.sider.Number => v.value
     }
 
 }

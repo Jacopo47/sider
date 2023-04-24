@@ -61,10 +61,10 @@ trait KeyCommands extends RedisCommandsByType {
   def keys(pattern: String): Either[Throwable, Seq[String]]
   def migrate = ???
   def move = ???
-  def objectEncoding = ???
-  def objectFreq = ???
-  def objectIdleTime = ???
-  def objectRefCount = ???
+  def objectEncoding(key: String): Either[Throwable, String]
+  def objectFreq(key: String): Either[Throwable, Long]
+  def objectIdleTime(key: String): Either[Throwable, Long]
+  def objectRefCount(key: String): Either[Throwable, Long]
   def persist = ???
   def pExpire = ???
   def pExpireAt = ???
