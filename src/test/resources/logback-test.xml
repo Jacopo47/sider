@@ -10,6 +10,7 @@
 
 
     <logger name="com.sider" level="DEBUG"/>
+    <logger name="org" level="WARN"/>
 
     <root level="INFO">
         <appender-ref ref="STDOUT" />

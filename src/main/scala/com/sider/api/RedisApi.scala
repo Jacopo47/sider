@@ -6,6 +6,7 @@ import com.sider.SimpleError
 import com.sider.BlobError
 import com.sider.network.Resp3TcpClient
 import com.sider.api.options.ExpireOption
+import com.sider.api.entities.ScanResponse
 
 /**
  * These API aim to be transparent as much as possible. So, until something
@@ -90,7 +91,12 @@ trait KeyCommands extends RedisCommandsByType {
       idleTime: Option[Long] = None,
       freq: Option[Long] = None
   ): Either[Throwable, String]
-  def scan = ???
+  def scan(
+    cursor: String, 
+    pattern: Option[String] = None,
+    count: Option[Long] = None,
+    _type: Option[String] = None
+  ): Either[Throwable, ScanResponse]
   def sort = ???
   def sortRo = ???
   def touch = ???

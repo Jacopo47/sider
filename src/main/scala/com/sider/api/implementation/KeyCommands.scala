@@ -9,6 +9,9 @@ import com.sider.Identifiers.SimpleString
 import com.sider.Type
 import com.sider.SimpleString
 import com.sider.api.options.ExpireOption
+import com.sider.api.entities.ScanResponse
+
+case class ScanResponseNotAsExpected(val msg: String, val cause: Throwable = null) extends Throwable(msg, cause) {}
 
 class BasicKeyCommands(
     val tcp: Resp3TcpClient
@@ -208,5 +211,47 @@ class BasicKeyCommands(
     sendCommandWithGenericErrorHandler(Array("RENAMENX", src, dest)) {
       case v: com.sider.Number => v.value
     }
+
+  def scan(
+    cursor: String, 
+    pattern: Option[String] = None,
+    count: Option[Long] = None,
+    _type: Option[String] = None
+  ): Either[Throwable, ScanResponse] =
+    var command = Array("SCAN", cursor)
+
+    command = if (pattern.isDefined) {
+      command :++ Array("MATCH", pattern.get)
+    } else {
+      command
+    }
+
+    command = if (count.isDefined) {
+      command :++ Array("COUNT", count.map(_.toString()).get)
+    } else {
+      command
+    }
+
+    command = if (_type.isDefined) {
+      command :++ Array("TYPE", _type.get)
+    } else {
+      command
+    }
+
+    sendCommandWithGenericErrorHandler(command) {
+      case v: com.sider.Resp3Array => v.value
+    }
+    .filterOrElse(_.size == 2, ScanResponseNotAsExpected(s"Expected 2 elements from the SCAN command response"))
+    .flatMap(res => {
+      try {
+        val cursor: String = res(0).asInstanceOf[String]
+        val elements: Seq[String] = res(1).asInstanceOf[Seq[String]]
+
+        Right(ScanResponse(cursor, elements))
+      } catch {
+        case e: ClassCastException => Left(ScanResponseNotAsExpected("Unexpected type", e))
+      }
+    })
+    
 
 }

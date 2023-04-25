@@ -7,8 +7,13 @@ import java.time.Instant
 import java.util.Calendar
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
+import com.sider.api.entities.ScanResponse
+import com.sider.Resp3Serialization.logger
+import org.slf4j.LoggerFactory
 
 class KeyCommandsSuite extends munit.FunSuite {
+
+  val logger = LoggerFactory.getLogger(classOf[KeyCommandsSuite])
 
   val redisServer = new RedisServer()
     .withExposedPorts(6379)
@@ -120,6 +125,26 @@ class KeyCommandsSuite extends munit.FunSuite {
     assertEquals(cmd.exists("rename:a"), Right(0L))
     assertEquals(cmd.renameNx("rename:b", "rename:a"), Right(1L))
     assertEquals(cmd.exists("rename:a"), Right(1L))    
+  }
+
+  test("SCAN") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.keys
+
+    /* Prepares a list of keys for this test scenario */
+    (1 to 100) map(_.toString()) map { e => c.strings.set(s"scan:$e", e) }
+
+    /* Utility functions that can be used to do a complete scan */
+    def scanAll(start: String, count: Int): Int = {
+      if ("0".equals(start) && count >= 0) then return count
+
+
+      logger.debug("Executing scan..")
+      val res = cmd.scan(start, Some("scan:*"),  Some(10L), Some("string")).getOrElse(ScanResponse("0", Seq.empty))
+      scanAll(res.next, (if (count == -1) then 0 else count) + res.elements.size)
+    }
+
+    assertEquals(scanAll("0", -1), 100)
   }
   
 }
