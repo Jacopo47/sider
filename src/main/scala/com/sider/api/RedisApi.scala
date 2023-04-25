@@ -99,7 +99,7 @@ trait KeyCommands extends RedisCommandsByType {
   ): Either[Throwable, ScanResponse]
   def sort = ???
   def sortRo = ???
-  def touch = ???
+  def touch(key: String*): Either[Throwable, Long]
   def ttl(key: String): Either[Throwable, Long]
   def type_ = ???
   def unlink = ???

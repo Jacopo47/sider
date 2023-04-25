@@ -87,10 +87,16 @@ class BasicKeyCommands(
         handler orElse genericErrorHandler
       }
 
-  override def exists(key: String*): Either[Throwable, Long] =
+  def exists(key: String*): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler("EXISTS" +: key.toArray) {
       case v: com.sider.Number => v.value
     }
+
+  def touch(key: String*): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler("TOUCH" +: key.toArray) {
+      case v: com.sider.Number => v.value
+    }
+
 
   def expire(
       key: String,
