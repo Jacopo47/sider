@@ -55,14 +55,31 @@ class KeyCommandsSuite extends munit.FunSuite {
 
     c.strings.set("expire:foo", "bar")
     assertEquals(cmd.ttl("expire:foo"), Right(-1L))
+    assertEquals(cmd.ttl("expire:foo"), Right(-1L))
+    assertEquals(cmd.ttl("expire:not_exists"), Right(-2L))
     assertEquals(cmd.ttl("expire:not_exists"), Right(-2L))
 
     c.keys.expire("expire:foo", Int.MaxValue.toLong)
     assert(cmd.ttl("expire:foo").exists(_ > 0))
+    assert(cmd.pTtl("expire:foo").exists(_ > 0))
+
+    
+    assertEquals(cmd.persist("expire:foo"), Right(1L))
+    assert(cmd.ttl("expire:foo").exists(_ == -1))
+    assert(cmd.pTtl("expire:foo").exists(_ == -1))
+
+    c.keys.pExpire("expire:foo", Int.MaxValue.toLong)
+    assert(cmd.ttl("expire:foo").exists(_ > 0))
+    assert(cmd.pTtl("expire:foo").exists(_ > 0))
 
     val toNextMonth = Instant.now().plus(30, ChronoUnit.DAYS).getEpochSecond()
     c.keys.expireAt("expire:foo", toNextMonth, Some(com.sider.api.options.XX()))
     assertEquals(cmd.expireTime("expire:foo"), Right(toNextMonth))
+
+    assertEquals(cmd.persist("expire:foo"), Right(1L))
+
+    c.keys.pExpireAt("expire:foo", toNextMonth * 1000)
+    assertEquals(cmd.pExpireTime("expire:foo"), Right(toNextMonth * 1000))
   }
 
   test("KEYS") {

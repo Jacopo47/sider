@@ -122,6 +122,49 @@ class BasicKeyCommands(
       case v: com.sider.Number => v.value
     }
 
+  def persist(key: String): Either[Throwable, Long] = 
+    sendCommandWithGenericErrorHandler(Array("PERSIST", key)) {
+      case v: com.sider.Number => v.value
+    }
+
+  def pExpire(
+      key: String,
+      milliseconds: Long,
+      option: Option[ExpireOption] = None
+  ): Either[Throwable, Long] =
+    var command = Array("PEXPIRE", key, milliseconds.toString())
+
+    command =
+      if option.isDefined then command :+ option.map(_.command).get else command
+
+    sendCommandWithGenericErrorHandler(command) { 
+      case v: com.sider.Number => v.value
+    }
+
+  def pExpireAt(
+      key: String,
+      unixTimeMilliseconds: Long,
+      option: Option[ExpireOption] = None
+  ): Either[Throwable, Long] =
+    var command = Array("PEXPIREAT", key, unixTimeMilliseconds.toString())
+
+    command =
+      if option.isDefined then command :+ option.map(_.command).get else command
+
+    sendCommandWithGenericErrorHandler(command) { 
+      case v: com.sider.Number => v.value
+    }
+
+  def pExpireTime(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("PEXPIRETIME", key)) { 
+      case v: com.sider.Number => v.value
+    }
+
+  def pTtl(key: String): Either[Throwable, Long] = 
+    sendCommandWithGenericErrorHandler(Array("PTTL", key)) {
+      case v: com.sider.Number => v.value
+    }
+
   def ttl(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("TTL", key)) {
       case v: com.sider.Number => v.value
@@ -150,5 +193,4 @@ class BasicKeyCommands(
     sendCommandWithGenericErrorHandler(Array("OBJECT", "REFCOUNT", key)) {
       case v: com.sider.Number => v.value
     }
-
 }

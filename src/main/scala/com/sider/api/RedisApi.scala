@@ -65,11 +65,19 @@ trait KeyCommands extends RedisCommandsByType {
   def objectFreq(key: String): Either[Throwable, Long]
   def objectIdleTime(key: String): Either[Throwable, Long]
   def objectRefCount(key: String): Either[Throwable, Long]
-  def persist = ???
-  def pExpire = ???
-  def pExpireAt = ???
-  def pExpireTime = ???
-  def pTtl = ???
+  def persist(key: String): Either[Throwable, Long]
+  def pExpire(
+      key: String,
+      milliseconds: Long,
+      option: Option[ExpireOption] = None
+  ): Either[Throwable, Long]
+  def pExpireAt(
+      key: String,
+      unixTimeMilliseconds: Long,
+      option: Option[ExpireOption] = None
+  ): Either[Throwable, Long]
+  def pExpireTime(key: String): Either[Throwable, Long]
+  def pTtl(key: String): Either[Throwable, Long]
   def randomKey = ???
   def rename = ???
   def renameNx = ???
