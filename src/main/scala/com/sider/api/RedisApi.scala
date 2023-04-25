@@ -78,9 +78,9 @@ trait KeyCommands extends RedisCommandsByType {
   ): Either[Throwable, Long]
   def pExpireTime(key: String): Either[Throwable, Long]
   def pTtl(key: String): Either[Throwable, Long]
-  def randomKey = ???
-  def rename = ???
-  def renameNx = ???
+  def randomKey(): Either[Throwable, String]
+  def rename(src: String, dest: String): Either[Throwable, String]
+  def renameNx(src: String, dest: String): Either[Throwable, Long]
   def restore(
       key: String,
       serializedValue: Array[Byte],

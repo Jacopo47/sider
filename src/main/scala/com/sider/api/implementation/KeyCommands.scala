@@ -193,4 +193,20 @@ class BasicKeyCommands(
     sendCommandWithGenericErrorHandler(Array("OBJECT", "REFCOUNT", key)) {
       case v: com.sider.Number => v.value
     }
+
+  def randomKey(): Either[Throwable, String] =
+    sendCommandWithGenericErrorHandler(Array("RANDOMKEY")) {
+      case v: com.sider.BlobString => v.value
+    }
+
+  def rename(src: String, dest: String): Either[Throwable, String] =
+    sendCommandWithGenericErrorHandler(Array("RENAME", src, dest)) {
+      case v: com.sider.SimpleString => v.value
+    }
+
+  def renameNx(src: String, dest: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("RENAMENX", src, dest)) {
+      case v: com.sider.Number => v.value
+    }
+
 }

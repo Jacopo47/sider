@@ -107,5 +107,19 @@ class KeyCommandsSuite extends munit.FunSuite {
     assert(cmd.objectIdleTime("object:a").isRight)
     assertEquals(cmd.objectRefCount("object:a"), Right(1L))
   }
+
+  test("RANDOM, RENAME*") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.keys
+
+    c.strings.set("rename:a", "a")
+
+    assert(cmd.randomKey().isRight)
+
+    assertEquals(cmd.rename("rename:a", "rename:b"), Right("OK"))
+    assertEquals(cmd.exists("rename:a"), Right(0L))
+    assertEquals(cmd.renameNx("rename:b", "rename:a"), Right(1L))
+    assertEquals(cmd.exists("rename:a"), Right(1L))    
+  }
   
 }
