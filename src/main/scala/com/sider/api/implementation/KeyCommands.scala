@@ -258,6 +258,15 @@ class BasicKeyCommands(
         case e: ClassCastException => Left(ScanResponseNotAsExpected("Unexpected type", e))
       }
     })
-    
 
+
+  def unlink(key: String*): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler("UNLINK" +: key.toArray) {
+      case v: com.sider.Number => v.value
+    }
+
+  def type_(key: String): Either[Throwable, String] =
+    sendCommandWithGenericErrorHandler(Array("TYPE", key)) {
+      case v: com.sider.SimpleString => v.value
+    }
 }

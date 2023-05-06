@@ -24,7 +24,7 @@ class KeyCommandsSuite extends munit.FunSuite {
 
   override def afterAll(): Unit = redisServer.stop()
 
-  test("EXISTS, COPY, DEL; TOUCH") {
+  test("EXISTS, COPY, DEL, TOUCH, TYPE, UNLINK") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
     val cmd = c.keys
 
@@ -36,6 +36,10 @@ class KeyCommandsSuite extends munit.FunSuite {
     assertEquals(cmd.touch("foo", "foo:1", "not_exists"), Right(2L))
     assertEquals(cmd.del("foo", "foo:1"), Right(2L))
     assertEquals(cmd.del("foo", "foo:1"), Right(0L))
+
+    c.strings.set("foo", "bar")
+    assertEquals(cmd.type_("foo"), Right("string"))
+    assertEquals(cmd.unlink("foo", "not_exists"), Right(1L))
   }
 
   test("DUMP, SERIALIZATION") {

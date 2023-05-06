@@ -101,8 +101,8 @@ trait KeyCommands extends RedisCommandsByType {
   def sortRo = ???
   def touch(key: String*): Either[Throwable, Long]
   def ttl(key: String): Either[Throwable, Long]
-  def type_ = ???
-  def unlink = ???
+  def type_(key: String): Either[Throwable, String]
+  def unlink(key: String*): Either[Throwable, Long]
   def wait_ = ???
   def waitAof = ???
 }
