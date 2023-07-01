@@ -8,37 +8,16 @@ import com.sider.network.Resp3TcpClient
 import com.sider.api.options.ExpireOption
 import com.sider.api.entities.ScanResponse
 
+
 /**
  * These API aim to be transparent as much as possible. So, until something
  * different is explicit specified by the doc all these method are just
  * utilities in order to call "plain" Redis command. Refer to Redis' commands
  * documentation for details about command's behavior.
  */
-trait RedisApi {
-  val strings: StringCommands
-  val keys: KeyCommands
-}
+trait RedisApiDefinition {
 
-sealed trait RedisCommandsByType {
-  def genericErrorHandler[A]: PartialFunction[Type[?], Either[Throwable, A]] = {
-    case e: SimpleError => e.value.flatMap(error => Left(Throwable(error)))
-    case e: BlobError   => e.value.flatMap(error => Left(Throwable(error)))
-    case _              => Left(ResponseNotMappedError())
-  }
-
-  def sendCommandWithGenericErrorHandler[A](
-      command: Array[?]
-  )(
-      handler: PartialFunction[Type[?], Either[Throwable, A]]
-  )(using tcp: Resp3TcpClient) =
-    tcp
-      .sendAndWaitResponseSync(command map (_.toString()): _*)
-      .flatMap {
-        handler orElse genericErrorHandler
-      }
-}
-
-trait KeyCommands extends RedisCommandsByType {
+  /* Keys commands */
   def copy(
       source: String,
       dest: String,
@@ -105,15 +84,14 @@ trait KeyCommands extends RedisCommandsByType {
   def unlink(key: String*): Either[Throwable, Long]
   def wait_ = ???
   def waitAof = ???
-}
 
-/**
- * </p> Note: </p>
- *   1. LCS not supported right now. </p> 2. SUBSTR is not covered because
- *      deprecated in favour of GETRANGE. </p> 3. SETEX, GETSET, SETNX, PSETEX
- *      not covered in favour of SET with related flags </p>
- */
-trait StringCommands extends RedisCommandsByType {
+  /*
+    * Strings commands:
+    * </p> Note: </p>
+    *   1. LCS not supported right now. </p> 2. SUBSTR is not covered because
+    *      deprecated in favour of GETRANGE. </p> 3. SETEX, GETSET, SETNX, PSETEX
+    *      not covered in favour of SET with related flags </p>
+    */
 
   def append(key: String, value: String): Either[Throwable, Long]
 

@@ -16,18 +16,18 @@ class RedisClientSuite extends munit.FunSuite {
 
   test("SET and GET") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.strings
+    val cmd = c.api
 
-    val app = c.strings.set("foo", "bar")
+    val app = c.api.set("foo", "bar")
 
-    assertEquals(c.strings.get("foo"), Right("bar"))
+    assertEquals(c.api.get("foo"), Right("bar"))
 
-    assertEquals(c.strings.get("foo1"), Left(KeyNotFound()))
-    assertEquals(c.strings.set("foo1", "bar"), Right("OK"))
-    assertEquals(c.strings.get("foo1"), Right("bar"))
+    assertEquals(c.api.get("foo1"), Left(KeyNotFound()))
+    assertEquals(c.api.set("foo1", "bar"), Right("OK"))
+    assertEquals(c.api.get("foo1"), Right("bar"))
 
-    assertEquals(c.strings.getDel("foo1"), Right("bar"))
-    assertEquals(c.strings.getDel("foo1"), Left(KeyNotFound()))
+    assertEquals(c.api.getDel("foo1"), Right("bar"))
+    assertEquals(c.api.getDel("foo1"), Left(KeyNotFound()))
 
     assertEquals(cmd.set("getex:foo", "Hello World", ex = Some(360L)), Right("OK"))
     assertEquals(cmd.getEx("getex:foo"), Right("Hello World"))
@@ -39,21 +39,21 @@ class RedisClientSuite extends munit.FunSuite {
   test("INCR* AND DECR*") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
 
-    assert(c.strings.set("foo", "0").isRight)
-    assertEquals(c.strings.incr("foo"), Right(1L))
-    assertEquals(c.strings.incrBy("foo", 19L), Right(20L))
-    assertEquals(c.strings.incrByFloat("foo", 1.2), Right(21.2))
-    assertEquals(c.strings.incrByFloat("foo", -21.2), Right(0.0))
-    assertEquals(c.strings.get("foo"), Right("0"))
+    assert(c.api.set("foo", "0").isRight)
+    assertEquals(c.api.incr("foo"), Right(1L))
+    assertEquals(c.api.incrBy("foo", 19L), Right(20L))
+    assertEquals(c.api.incrByFloat("foo", 1.2), Right(21.2))
+    assertEquals(c.api.incrByFloat("foo", -21.2), Right(0.0))
+    assertEquals(c.api.get("foo"), Right("0"))
 
-    assertEquals(c.strings.decr("foo"), Right(-1L))
-    assertEquals(c.strings.decrBy("foo", 1L), Right(-2L))
-    assertEquals(c.strings.decrBy("foo", -22L), Right(20L))
+    assertEquals(c.api.decr("foo"), Right(-1L))
+    assertEquals(c.api.decrBy("foo", 1L), Right(-2L))
+    assertEquals(c.api.decrBy("foo", -22L), Right(20L))
   }
 
   test("APPEND") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.strings
+    val cmd = c.api
 
     assertEquals(cmd.append("append:foo", "Hello"), Right(5L))
     assertEquals(cmd.append("append:foo", " World"), Right(11L))
@@ -62,7 +62,7 @@ class RedisClientSuite extends munit.FunSuite {
 
   test("STRLEN") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.strings
+    val cmd = c.api
 
     assertEquals(cmd.set("strlen:foo", "Hello world"), Right("OK"))
     assertEquals(cmd.strlen("strlen:foo"), Right(11L))
@@ -71,7 +71,7 @@ class RedisClientSuite extends munit.FunSuite {
 
   test("MSET AND MGET") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.strings
+    val cmd = c.api
 
     assert(cmd.mset(Map.empty).isLeft)
     assertEquals(cmd.mset(Map("mset:a" -> "a", "mset:b" -> "b")), Right("OK"))
@@ -89,7 +89,7 @@ class RedisClientSuite extends munit.FunSuite {
 
   test("SET/GET RANGE") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.strings
+    val cmd = c.api
 
     assertEquals(cmd.set("range:a", "Hello World"), Right("OK"))
     assertEquals(cmd.setRange("range:a", 6, "Redis"), Right(11L))
