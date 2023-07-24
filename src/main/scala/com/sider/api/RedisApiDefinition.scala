@@ -6,6 +6,7 @@ import com.sider.SimpleError
 import com.sider.BlobError
 import com.sider.network.Resp3TcpClient
 import com.sider.api.options.ExpireOption
+import com.sider.api.options.ListInsertPositionOption
 import com.sider.api.entities.ScanResponse
 import com.sider.concurrency.IO
 
@@ -138,5 +139,16 @@ trait RedisApiDefinition {
   def mget(keys: String*): IO[Either[Throwable, Seq[Any]]]
   def mset(entries: Map[String, String]): IO[Either[Throwable, String]]
   def msetNx(entries: Map[String, String]): IO[Either[Throwable, Long]]
+
+
+  /* List commands */
+
+  def lindex(key: String, index: Long): IO[Either[Throwable, String]]
+  def linsert(key: String, position: ListInsertPositionOption, pivot: Long, element: String): IO[Either[Throwable, Long]]
+  def llen(key: String): IO[Either[Throwable, Long]]
+
+  def lpush(key: String, elements: String*): IO[Either[Throwable, Long]]
+  def lpop(key: String, count: Option[Long] = None): IO[Either[Throwable, Seq[String]]]
+  
 
 }

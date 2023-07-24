@@ -13,12 +13,14 @@ import com.sider.Resp3Array
 import com.sider.Resp3Serialization
 import com.sider.api.implementation.RedisApi.genericErrorHandler
 import com.sider.api.options.ExpireOption
+import com.sider.api.options.ListInsertPositionOption
 import com.sider.api.entities.ScanResponse
 import com.sider.api.RedisApiDefinition
 import com.sider.concurrency.IO
 
 
 case class ScanResponseNotAsExpected(val msg: String, val cause: Throwable = null) extends Throwable(msg, cause) {}
+case class NotExistingOrEmptyList(val msg: String, val cause: Throwable = null) extends Throwable(msg, cause) {}
 
 class RedisApi(
     val tcp: Resp3TcpClient
@@ -435,6 +437,28 @@ class RedisApi(
       case v: BlobString => v.value
     }
 
+
+  /* List commands */
+  
+  override def lindex(key: String, index: Long): IO[Either[Throwable, String]] = ???
+  override def linsert(key: String, position: ListInsertPositionOption, pivot: Long, element: String): IO[Either[Throwable, Long]] = ???
+  override def llen(key: String): IO[Either[Throwable, Long]] = sendCommandWithGenericErrorHandler(Array("LLEN", key)) {
+    case v: com.sider.Number => v.value 
+  }
+  override def lpush(key: String, elements: String*): IO[Either[Throwable, Long]] = sendCommandWithGenericErrorHandler("LPUSH" +: key +: elements.toArray) {
+      case v: com.sider.Number => v.value
+    }
+  override def lpop(key: String, count: Option[Long] = None): IO[Either[Throwable, Seq[String]]] =
+    var command = Array("LPOP", key)
+
+    command =
+      if count.isDefined then command :+ count.map(_.toString()).get else command
+
+    sendCommandWithGenericErrorHandler(command) { 
+      case v: com.sider.BlobString => v.value.map(Seq(_))
+      case v: com.sider.Resp3Array => v.value.asInstanceOf[Either[Throwable, Seq[String]]]
+      case v: com.sider.Null => Left(NotExistingOrEmptyList(s"Key $key does not exist or is an empty list"))
+    }
 }
 
 
