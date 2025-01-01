@@ -142,12 +142,12 @@ trait RedisApiDefinition {
 
   /* List commands */
 
-  def lindex(key: String, index: Long): IO[Either[Throwable, String]]
-  def linsert(key: String, position: ListInsertPositionOption, pivot: Long, element: String): IO[Either[Throwable, Long]]
-  def llen(key: String): IO[Either[Throwable, Long]]
+  def lindex(key: String, index: Long): Either[Throwable, String]
+  def linsert(key: String, position: ListInsertPositionOption, pivot: Long, element: String): Either[Throwable, Long]
+  def llen(key: String): Either[Throwable, Long]
 
-  def lpush(key: String, elements: String*): IO[Either[Throwable, Long]]
-  def lpop(key: String, count: Option[Long] = None): IO[Either[Throwable, Seq[String]]]
+  def lpush(key: String, elements: String*): Either[Throwable, Long]
+  def lpop(key: String, count: Option[Long] = None): Either[Throwable, Seq[String]]
   
 
 }

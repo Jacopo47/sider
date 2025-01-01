@@ -434,15 +434,15 @@ class RedisApi(
 
   /* List commands */
   
-  override def lindex(key: String, index: Long): IO[Either[Throwable, String]] = ???
-  override def linsert(key: String, position: ListInsertPositionOption, pivot: Long, element: String): IO[Either[Throwable, Long]] = ???
-  override def llen(key: String): IO[Either[Throwable, Long]] = sendCommandWithGenericErrorHandler(Array("LLEN", key)) {
+  override def lindex(key: String, index: Long): Either[Throwable, String] = ???
+  override def linsert(key: String, position: ListInsertPositionOption, pivot: Long, element: String): Either[Throwable, Long] = ???
+  override def llen(key: String): Either[Throwable, Long] = sendCommandWithGenericErrorHandler(Array("LLEN", key)) {
     case v: com.sider.Number => v.value 
   }
-  override def lpush(key: String, elements: String*): IO[Either[Throwable, Long]] = sendCommandWithGenericErrorHandler("LPUSH" +: key +: elements.toArray) {
+  override def lpush(key: String, elements: String*): Either[Throwable, Long] = sendCommandWithGenericErrorHandler("LPUSH" +: key +: elements.toArray) {
       case v: com.sider.Number => v.value
     }
-  override def lpop(key: String, count: Option[Long] = None): IO[Either[Throwable, Seq[String]]] =
+  override def lpop(key: String, count: Option[Long] = None): Either[Throwable, Seq[String]] =
     var command = Array("LPOP", key)
 
     command =

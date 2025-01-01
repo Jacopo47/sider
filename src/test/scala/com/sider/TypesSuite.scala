@@ -217,7 +217,7 @@ class TypesSuite extends munit.FunSuite {
 
     assertEquals(
       test.flatMap(e => e.attributes),
-      Right(scala.collection.immutable.Map("key-popularity" -> scala.collection.immutable.Map("a" -> 0.1923, "b" -> 0.0012)))
+      Right(scala.collection.immutable.Map[Any, Any]("key-popularity" -> scala.collection.immutable.Map("a" -> 0.1923, "b" -> 0.0012)))
     )
 
 
@@ -234,7 +234,7 @@ class TypesSuite extends munit.FunSuite {
     assertEquals(test.flatMap(_.length), Right(29))
     assertEquals(
       test.flatMap(e => e.value),
-      Right(scala.collection.immutable.Map("first" -> 1, "second" -> 2))
+      Right(scala.collection.immutable.Map[Any, Any]("first" -> 1, "second" -> 2))
     )
 
     val blobWithEndCharInside = s"$$12${RNs}hello${RNs}world"
@@ -285,7 +285,7 @@ class TypesSuite extends munit.FunSuite {
       case _                           => Left(Throwable("Unexpected type"))
 
     assertEquals(test.flatMap(_.length), Right(16))
-    assertEquals(test.flatMap(e => e.value), Right(scala.collection.immutable.Set(1, 2, 3)))
+    assertEquals(test.flatMap(e => e.value), Right(scala.collection.immutable.Set[Any](1, 2, 3)))
     assertEquals(
       Resp3Serialization
         .readString(s"~4$RNs:1$RNs:2$RNs:3$RNs+Helloworld")
