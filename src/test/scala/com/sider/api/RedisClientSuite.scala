@@ -18,72 +18,72 @@ class RedisClientSuite extends munit.FunSuite {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
     val cmd = c.api
 
-    val app = c.api.set("foo", "bar").get
+    val app = c.api.set("foo", "bar")
 
-    assertEquals(c.api.get("foo").get, Right("bar"))
+    assertEquals(c.api.get("foo"), Right("bar"))
 
-    assertEquals(c.api.get("foo1").get, Left(KeyNotFound()))
-    assertEquals(c.api.set("foo1", "bar").get, Right("OK"))
-    assertEquals(c.api.get("foo1").get, Right("bar"))
+    assertEquals(c.api.get("foo1"), Left(KeyNotFound()))
+    assertEquals(c.api.set("foo1", "bar"), Right("OK"))
+    assertEquals(c.api.get("foo1"), Right("bar"))
 
-    assertEquals(c.api.getDel("foo1").get, Right("bar"))
-    assertEquals(c.api.getDel("foo1").get, Left(KeyNotFound()))
+    assertEquals(c.api.getDel("foo1"), Right("bar"))
+    assertEquals(c.api.getDel("foo1"), Left(KeyNotFound()))
 
-    assertEquals(cmd.set("getex:foo", "Hello World", ex = Some(360L)).get, Right("OK"))
-    assertEquals(cmd.getEx("getex:foo").get, Right("Hello World"))
-    assertEquals(cmd.getEx("getex:foo", ex = Some(120L)).get, Right("Hello World"))
-    assertEquals(cmd.getEx("getex:foo", px = Some(120000L)).get, Right("Hello World"))   
-    assert(cmd.getEx("getex:foo", ex = Some(120L), px = Some(120000L)).get.isLeft)   
+    assertEquals(cmd.set("getex:foo", "Hello World", ex = Some(360L)), Right("OK"))
+    assertEquals(cmd.getEx("getex:foo"), Right("Hello World"))
+    assertEquals(cmd.getEx("getex:foo", ex = Some(120L)), Right("Hello World"))
+    assertEquals(cmd.getEx("getex:foo", px = Some(120000L)), Right("Hello World"))   
+    assert(cmd.getEx("getex:foo", ex = Some(120L), px = Some(120000L)).isLeft)   
   }
 
   test("INCR* AND DECR*") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
 
-    assert(c.api.set("foo", "0").get.isRight)
-    assertEquals(c.api.incr("foo").get, Right(1L))
-    assertEquals(c.api.incrBy("foo", 19L).get, Right(20L))
-    assertEquals(c.api.incrByFloat("foo", 1.2).get, Right(21.2))
-    assertEquals(c.api.incrByFloat("foo", -21.2).get, Right(0.0))
-    assertEquals(c.api.get("foo").get, Right("0"))
+    assert(c.api.set("foo", "0").isRight)
+    assertEquals(c.api.incr("foo"), Right(1L))
+    assertEquals(c.api.incrBy("foo", 19L), Right(20L))
+    assertEquals(c.api.incrByFloat("foo", 1.2), Right(21.2))
+    assertEquals(c.api.incrByFloat("foo", -21.2), Right(0.0))
+    assertEquals(c.api.get("foo"), Right("0"))
 
-    assertEquals(c.api.decr("foo").get, Right(-1L))
-    assertEquals(c.api.decrBy("foo", 1L).get, Right(-2L))
-    assertEquals(c.api.decrBy("foo", -22L).get, Right(20L))
+    assertEquals(c.api.decr("foo"), Right(-1L))
+    assertEquals(c.api.decrBy("foo", 1L), Right(-2L))
+    assertEquals(c.api.decrBy("foo", -22L), Right(20L))
   }
 
   test("APPEND") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
     val cmd = c.api
 
-    assertEquals(cmd.append("append:foo", "Hello").get, Right(5L))
-    assertEquals(cmd.append("append:foo", " World").get, Right(11L))
-    assertEquals(cmd.get("append:foo").get, Right("Hello World"))
+    assertEquals(cmd.append("append:foo", "Hello"), Right(5L))
+    assertEquals(cmd.append("append:foo", " World"), Right(11L))
+    assertEquals(cmd.get("append:foo"), Right("Hello World"))
   }
 
   test("STRLEN") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
     val cmd = c.api
 
-    assertEquals(cmd.set("strlen:foo", "Hello world").get, Right("OK"))
-    assertEquals(cmd.strlen("strlen:foo").get, Right(11L))
-    assertEquals(cmd.strlen("nonexisting").get, Right(0L))
+    assertEquals(cmd.set("strlen:foo", "Hello world"), Right("OK"))
+    assertEquals(cmd.strlen("strlen:foo"), Right(11L))
+    assertEquals(cmd.strlen("nonexisting"), Right(0L))
   }
 
   test("MSET AND MGET") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
     val cmd = c.api
 
-    assert(cmd.mset(Map.empty).get.isLeft)
-    assertEquals(cmd.mset(Map("mset:a" -> "a", "mset:b" -> "b")).get, Right("OK"))
-    assertEquals(cmd.get("mset:a").get, Right("a"))
-    assertEquals(cmd.get("mset:b").get, Right("b"))
+    assert(cmd.mset(Map.empty).isLeft)
+    assertEquals(cmd.mset(Map("mset:a" -> "a", "mset:b" -> "b")), Right("OK"))
+    assertEquals(cmd.get("mset:a"), Right("a"))
+    assertEquals(cmd.get("mset:b"), Right("b"))
 
-    assertEquals(cmd.mget("mset:a", "mset:b").get, Right(Seq("a", "b")))
-    assertEquals(cmd.mget("mset:a", "mset:b", "nonexisting").get, Right(Seq("a", "b", null)))
+    assertEquals(cmd.mget("mset:a", "mset:b"), Right(Seq("a", "b")))
+    assertEquals(cmd.mget("mset:a", "mset:b", "nonexisting"), Right(Seq("a", "b", null)))
 
 
-    assertEquals(cmd.msetNx(Map("msetnx:a" -> "a", "msetnx:b" -> "b")).get, Right(1L))
-    assertEquals(cmd.msetNx(Map("msetnx:a" -> "a", "msetnx:c" -> "c")).get, Right(0L))
+    assertEquals(cmd.msetNx(Map("msetnx:a" -> "a", "msetnx:b" -> "b")), Right(1L))
+    assertEquals(cmd.msetNx(Map("msetnx:a" -> "a", "msetnx:c" -> "c")), Right(0L))
   }
 
 
@@ -91,14 +91,14 @@ class RedisClientSuite extends munit.FunSuite {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
     val cmd = c.api
 
-    assertEquals(cmd.set("range:a", "Hello World").get, Right("OK"))
-    assertEquals(cmd.setRange("range:a", 6, "Redis").get, Right(11L))
-    assertEquals(cmd.get("range:a").get, Right("Hello Redis"))
+    assertEquals(cmd.set("range:a", "Hello World"), Right("OK"))
+    assertEquals(cmd.setRange("range:a", 6, "Redis"), Right(11L))
+    assertEquals(cmd.get("range:a"), Right("Hello Redis"))
 
-    assertEquals(cmd.setRange("range:b", 6, "Redis").get, Right(11L))
+    assertEquals(cmd.setRange("range:b", 6, "Redis"), Right(11L))
 
-    assertEquals(cmd.getRange("range:a", 0L, -1L).get, Right("Hello Redis"))
-    assertEquals(cmd.getRange("range:a", 100L, -1L).get, Right(""))
-    assertEquals(cmd.getRange("nonexisting", 0L, -1L).get, Right(""))
+    assertEquals(cmd.getRange("range:a", 0L, -1L), Right("Hello Redis"))
+    assertEquals(cmd.getRange("range:a", 100L, -1L), Right(""))
+    assertEquals(cmd.getRange("nonexisting", 0L, -1L), Right(""))
   }
 }
