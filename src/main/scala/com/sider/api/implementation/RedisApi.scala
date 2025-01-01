@@ -16,7 +16,6 @@ import com.sider.api.options.ExpireOption
 import com.sider.api.options.ListInsertPositionOption
 import com.sider.api.entities.ScanResponse
 import com.sider.api.RedisApiDefinition
-import com.sider.concurrency.IO
 
 
 case class ScanResponseNotAsExpected(val msg: String, val cause: Throwable = null) extends Throwable(msg, cause) {}
@@ -35,7 +34,7 @@ class RedisApi(
       dest: String,
       db: Option[String] = None,
       replace: Boolean = false
-  ): IO[Either[Throwable, Long]] =
+  ): Either[Throwable, Long] =
     var commands = Array("COPY", source, dest)
 
     commands = if db.isDefined then commands :+ "DB" :+ db.get else commands
@@ -45,12 +44,12 @@ class RedisApi(
       v.value
     }
 
-  override def del(key: String*): IO[Either[Throwable, Long]] =
+  override def del(key: String*): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler("DEL" +: key.toArray) {
       case v: com.sider.Number => v.value
     }
 
-  override def dump(key: String): IO[Either[Throwable, Array[Byte]]] =
+  override def dump(key: String): Either[Throwable, Array[Byte]] =
     sendCommandWithGenericErrorHandler(Array("DUMP", key)) {
       case v: BlobString =>
         v.bytes
@@ -67,7 +66,7 @@ class RedisApi(
       absTtl: Boolean = false,
       idleTime: Option[Long] = None,
       freq: Option[Long] = None
-  ): IO[Either[Throwable, String]] =
+  ): Either[Throwable, String] =
     var commands = Array(
       "RESTORE".getBytes(),
       key.getBytes(),
@@ -93,18 +92,17 @@ class RedisApi(
 
     tcp
       .sendAndWaitResponse(Resp3Serialization.toCommandFromBytes(commands: _*))
-      .map {
-        io => io.flatMap {
-          handler orElse genericErrorHandler
-        }
+      .get
+      .flatMap {
+        handler orElse genericErrorHandler
       }
 
-  def exists(key: String*): IO[Either[Throwable, Long]] =
+  def exists(key: String*): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler("EXISTS" +: key.toArray) {
       case v: com.sider.Number => v.value
     }
 
-  def touch(key: String*): IO[Either[Throwable, Long]] =
+  def touch(key: String*): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler("TOUCH" +: key.toArray) {
       case v: com.sider.Number => v.value
     }
@@ -114,7 +112,7 @@ class RedisApi(
       key: String,
       seconds: Long,
       option: Option[ExpireOption] = None
-  ): IO[Either[Throwable, Long]] =
+  ): Either[Throwable, Long] =
     var command = Array("EXPIRE", key, seconds.toString())
 
     command =
@@ -128,7 +126,7 @@ class RedisApi(
       key: String,
       unixTimeSecond: Long,
       option: Option[ExpireOption] = None
-  ): IO[Either[Throwable, Long]] =
+  ): Either[Throwable, Long] =
     var command = Array("EXPIREAT", key, unixTimeSecond.toString())
 
     command =
@@ -138,12 +136,12 @@ class RedisApi(
       v.value
     }
 
-  def expireTime(key: String): IO[Either[Throwable, Long]] =
+  def expireTime(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("EXPIRETIME", key)) {
       case v: com.sider.Number => v.value
     }
 
-  def persist(key: String): IO[Either[Throwable, Long]] = 
+  def persist(key: String): Either[Throwable, Long] = 
     sendCommandWithGenericErrorHandler(Array("PERSIST", key)) {
       case v: com.sider.Number => v.value
     }
@@ -152,7 +150,7 @@ class RedisApi(
       key: String,
       milliseconds: Long,
       option: Option[ExpireOption] = None
-  ): IO[Either[Throwable, Long]] =
+  ): Either[Throwable, Long] =
     var command = Array("PEXPIRE", key, milliseconds.toString())
 
     command =
@@ -166,7 +164,7 @@ class RedisApi(
       key: String,
       unixTimeMilliseconds: Long,
       option: Option[ExpireOption] = None
-  ): IO[Either[Throwable, Long]] =
+  ): Either[Throwable, Long] =
     var command = Array("PEXPIREAT", key, unixTimeMilliseconds.toString())
 
     command =
@@ -176,56 +174,56 @@ class RedisApi(
       case v: com.sider.Number => v.value
     }
 
-  def pExpireTime(key: String): IO[Either[Throwable, Long]] =
+  def pExpireTime(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("PEXPIRETIME", key)) { 
       case v: com.sider.Number => v.value
     }
 
-  def pTtl(key: String): IO[Either[Throwable, Long]] = 
+  def pTtl(key: String): Either[Throwable, Long] = 
     sendCommandWithGenericErrorHandler(Array("PTTL", key)) {
       case v: com.sider.Number => v.value
     }
 
-  def ttl(key: String): IO[Either[Throwable, Long]] =
+  def ttl(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("TTL", key)) {
       case v: com.sider.Number => v.value
     }
 
-  def keys(pattern: String): IO[Either[Throwable, Seq[String]]] =
+  def keys(pattern: String): Either[Throwable, Seq[String]] =
     sendCommandWithGenericErrorHandler(Array("KEYS", pattern)) {
       case v: com.sider.Resp3Array =>
         v.value.asInstanceOf[Either[Throwable, Seq[String]]]
     }
 
-  def objectEncoding(key: String): IO[Either[Throwable, String]] =
+  def objectEncoding(key: String): Either[Throwable, String] =
     sendCommandWithGenericErrorHandler(Array("OBJECT", "ENCODING", key)) {
       case v: com.sider.BlobString => v.value
     }
 
-  def objectFreq(key: String): IO[Either[Throwable, Long]] =
+  def objectFreq(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("OBJECT", "FREQ", key)) {
       case v: com.sider.Number => v.value
     }
-  def objectIdleTime(key: String): IO[Either[Throwable, Long]] =
+  def objectIdleTime(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("OBJECT", "IDLETIME", key)) {
       case v: com.sider.Number => v.value
     }
-  def objectRefCount(key: String): IO[Either[Throwable, Long]] =
+  def objectRefCount(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("OBJECT", "REFCOUNT", key)) {
       case v: com.sider.Number => v.value
     }
 
-  def randomKey(): IO[Either[Throwable, String]] =
+  def randomKey(): Either[Throwable, String] =
     sendCommandWithGenericErrorHandler(Array("RANDOMKEY")) {
       case v: com.sider.BlobString => v.value
     }
 
-  def rename(src: String, dest: String): IO[Either[Throwable, String]] =
+  def rename(src: String, dest: String): Either[Throwable, String] =
     sendCommandWithGenericErrorHandler(Array("RENAME", src, dest)) {
       case v: com.sider.SimpleString => v.value
     }
 
-  def renameNx(src: String, dest: String): IO[Either[Throwable, Long]] =
+  def renameNx(src: String, dest: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("RENAMENX", src, dest)) {
       case v: com.sider.Number => v.value
     }
@@ -235,7 +233,7 @@ class RedisApi(
     pattern: Option[String] = None,
     count: Option[Long] = None,
     _type: Option[String] = None
-  ): IO[Either[Throwable, ScanResponse]] =
+  ): Either[Throwable, ScanResponse] =
     var command = Array("SCAN", cursor)
 
     command = if (pattern.isDefined) {
@@ -259,29 +257,25 @@ class RedisApi(
     sendCommandWithGenericErrorHandler(command) {
       case v: com.sider.Resp3Array => v.value
     }
-    .map {
-      io => io
-              .filterOrElse(_.size == 2, ScanResponseNotAsExpected(s"Expected 2 elements from the SCAN command response"))
-              .flatMap(res => {
-                try {
-                  val cursor: String = res(0).asInstanceOf[String]
-                  val elements: Seq[String] = res(1).asInstanceOf[Seq[String]]
+    .filterOrElse(_.size == 2, ScanResponseNotAsExpected(s"Expected 2 elements from the SCAN command response"))
+    .flatMap(res => {
+      try {
+        val cursor: String = res(0).asInstanceOf[String]
+        val elements: Seq[String] = res(1).asInstanceOf[Seq[String]]
 
-                  Right(ScanResponse(cursor, elements))
-                } catch {
-                  case e: ClassCastException => Left(ScanResponseNotAsExpected("Unexpected type", e))
-                }
-              })
-    }
-    
+        Right(ScanResponse(cursor, elements))
+      } catch {
+        case e: ClassCastException => Left(ScanResponseNotAsExpected("Unexpected type", e))
+      }
+    })
 
 
-  def unlink(key: String*): IO[Either[Throwable, Long]] =
+  def unlink(key: String*): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler("UNLINK" +: key.toArray) {
       case v: com.sider.Number => v.value
     }
 
-  def type_(key: String): IO[Either[Throwable, String]] =
+  def type_(key: String): Either[Throwable, String] =
     sendCommandWithGenericErrorHandler(Array("TYPE", key)) {
       case v: com.sider.SimpleString => v.value
     }
@@ -290,17 +284,17 @@ class RedisApi(
 
   /* Strings commands */
 
-  override def append(key: String, value: String): IO[Either[Throwable, Long]] =
+  override def append(key: String, value: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("APPEND", key, value)) {
       case n: com.sider.Number => n.value
     }
 
-  override def incr(key: String): IO[Either[Throwable, Long]] =
+  override def incr(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("INCR", key)) {
       case v: com.sider.Number => v.value
     }
 
-  override def incrBy(key: String, increment: Long): IO[Either[Throwable, Long]] =
+  override def incrBy(key: String, increment: Long): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("INCRBY", key, increment)) {
       case v: com.sider.Number => v.value
     }
@@ -308,12 +302,12 @@ class RedisApi(
   override def incrByFloat(
       key: String,
       increment: Double
-  ): IO[Either[Throwable, Double]] =
+  ): Either[Throwable, Double] =
     sendCommandWithGenericErrorHandler(Array("INCRBYFLOAT", key, increment)) {
       case v: BlobString => v.value map { _.toDouble }
     }
 
-  override def get(key: String): IO[Either[Throwable, String]] =
+  override def get(key: String): Either[Throwable, String] =
     sendCommandWithGenericErrorHandler(Array("GET", key)) {
       case v: SimpleString   => v.value
       case v: BlobString     => v.value
@@ -321,18 +315,18 @@ class RedisApi(
 
     }
 
-  override def strlen(key: String): IO[Either[Throwable, Long]] =
+  override def strlen(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("STRLEN", key)) {
       case v: com.sider.Number => v.value
     }
 
-  override def decr(key: String): IO[Either[Throwable, Long]] =
+  override def decr(key: String): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("DECR", key)) {
       case v: com.sider.Number => v.value
 
     }
 
-  override def decrBy(key: String, decrement: Long): IO[Either[Throwable, Long]] =
+  override def decrBy(key: String, decrement: Long): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("DECRBY", key, decrement)) {
       case v: com.sider.Number => v.value
     }
@@ -344,7 +338,7 @@ class RedisApi(
       exat: Option[Long],
       pxat: Option[Long],
       persist: Boolean
-  ): IO[Either[Throwable, String]] =
+  ): Either[Throwable, String] =
     val command = Array(
       Array("GETEX"),
       Array(key),
@@ -372,7 +366,7 @@ class RedisApi(
       xx: Boolean,
       keepttl: Boolean,
       get: Boolean
-  ): IO[Either[Throwable, String]] =
+  ): Either[Throwable, String] =
     val command = Array(
       Array("SET"),
       Array(key),
@@ -394,25 +388,25 @@ class RedisApi(
       case v: BlobString   => v.value
     }
 
-  override def mget(keys: String*): IO[Either[Throwable, Seq[Any]]] =
+  override def mget(keys: String*): Either[Throwable, Seq[Any]] =
     sendCommandWithGenericErrorHandler("MGET" +: keys.toArray) {
       case v: Resp3Array => v.value
     }
 
-  override def getDel(key: String): IO[Either[Throwable, String]] =
+  override def getDel(key: String): Either[Throwable, String] =
     sendCommandWithGenericErrorHandler(Array("GETDEL", key)) {
       case v: BlobString     => v.value
       case v: com.sider.Null => Left(KeyNotFound())
     }
 
-  override def mset(entries: Map[String, String]): IO[Either[Throwable, String]] =
+  override def mset(entries: Map[String, String]): Either[Throwable, String] =
     val command = entries.toArray
       .flatMap(e => Array(e._1, e._2))
     sendCommandWithGenericErrorHandler("MSET" +: command) {
       case v: com.sider.SimpleString => v.value
     }
 
-  override def msetNx(entries: Map[String, String]): IO[Either[Throwable, Long]] =
+  override def msetNx(entries: Map[String, String]): Either[Throwable, Long] =
     val command = entries.toArray
       .flatMap(e => Array(e._1, e._2))
     sendCommandWithGenericErrorHandler("MSETNX" +: command) {
@@ -423,7 +417,7 @@ class RedisApi(
       key: String,
       offset: Long,
       value: String
-  ): IO[Either[Throwable, Long]] =
+  ): Either[Throwable, Long] =
     sendCommandWithGenericErrorHandler(Array("SETRANGE", key, offset, value)) {
       case v: com.sider.Number => v.value
     }
@@ -432,7 +426,7 @@ class RedisApi(
       key: String,
       start: Long,
       end: Long
-  ): IO[Either[Throwable, String]] =
+  ): Either[Throwable, String] =
     sendCommandWithGenericErrorHandler(Array("GETRANGE", key, start, end)) {
       case v: BlobString => v.value
     }
@@ -475,10 +469,8 @@ object RedisApi {
       handler: PartialFunction[Type[?], Either[Throwable, A]]
   )(using tcp: Resp3TcpClient) =
     tcp
-      .sendAndWaitResponse(command map (_.toString()): _*)
-      .map {
-        io => io.flatMap {
-          handler orElse genericErrorHandler
-        }
+      .sendAndWaitResponseSync(command map (_.toString()): _*)
+      .flatMap {
+        handler orElse genericErrorHandler
       }
 }
