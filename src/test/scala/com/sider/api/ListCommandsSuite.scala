@@ -45,4 +45,21 @@ class ListCommandsSuite extends munit.FunSuite {
     assertEquals(cmd.llen("list:a"), Right(0L))
 
   }
+
+  test("LMOVE scenario with RPUSH and LRANGE") {
+    val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
+    val cmd = c.api
+
+    assertEquals(cmd.rpush("list:lmove", "one", "two", "three"), Right(3L))
+
+    assertEquals(cmd.lmove("list:lmove", "list:lmove:copy", "RIGHT", "LEFT"), Right("three"))
+    assertEquals(cmd.lmove("list:lmove", "list:lmove:copy", "LEFT", "RIGHT"), Right("one"))
+
+
+    assert(cmd.lmove("list:lmove", "list:lmove:copy", "wrong", "input").isLeft)
+
+
+    assertEquals(cmd.lrange("list:lmove", 0, -1), Right(Seq("two")))
+    assertEquals(cmd.lrange("list:lmove:copy", 0, -1), Right(Seq("three", "one")))
+  }
 }

@@ -453,6 +453,21 @@ class RedisApi(
       case v: com.sider.Resp3Array => v.value.asInstanceOf[Either[Throwable, Seq[String]]]
       case v: com.sider.Null => Left(NotExistingOrEmptyList(s"Key $key does not exist or is an empty list"))
     }
+
+  override def lmove(source: String, dest: String, sourcePosition: String, destPosition: String): CommandResult[String] =
+    sendCommandWithGenericErrorHandler(Array("LMOVE", source, dest, sourcePosition, destPosition)) {
+      case v: com.sider.BlobString => v.value
+    }
+
+
+  override def lrange(key: String, start: Int, stop: Int): CommandResult[Seq[String]] =
+    sendCommandWithGenericErrorHandler(Array("LRANGE", key, start, stop)) {
+      case v: com.sider.Resp3Array => v.value.asInstanceOf[CommandResult[Seq[String]]]
+    }
+
+  override def rpush(key: String, elements: String*): Either[Throwable, Long] = sendCommandWithGenericErrorHandler("RPUSH" +: key +: elements.toArray) {
+    case v: com.sider.Number => v.value
+  }
 }
 
 

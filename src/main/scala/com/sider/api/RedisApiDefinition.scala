@@ -17,6 +17,7 @@ import com.sider.api.entities.ScanResponse
  * documentation for details about command's behavior.
  */
 trait RedisApiDefinition {
+  type CommandResult[T] = Either[Throwable, T]
 
   /* Keys commands */
   def copy(
@@ -149,5 +150,11 @@ trait RedisApiDefinition {
   def lpush(key: String, elements: String*): Either[Throwable, Long]
   def lpop(key: String, count: Option[Long] = None): Either[Throwable, Seq[String]]
   
+  def lrange(key: String, start: Int, stop: Int): CommandResult[Seq[String]]
+
+  def lmove(source: String, dest: String, sourcePosition: String, destPosition: String): CommandResult[String]
+
+
+  def rpush(key: String, elements: String*): CommandResult[Long]
 
 }
