@@ -8,8 +8,8 @@ lazy val root = project
 
     scalaVersion := scala3Version,
 
-    libraryDependencies += "org.slf4j" % "slf4j-api" % "2.0.6",
-    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.4.5",
-    libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test,
-    libraryDependencies += "org.testcontainers" % "testcontainers" % "1.17.6" % Test
+    libraryDependencies += "org.slf4j" % "slf4j-api" % "2.0.16",
+    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.5.15",
+    libraryDependencies += "org.scalameta" %% "munit" % "1.0.3" % Test,
+    libraryDependencies += "org.testcontainers" % "testcontainers" % "1.20.4" % Test
   )
