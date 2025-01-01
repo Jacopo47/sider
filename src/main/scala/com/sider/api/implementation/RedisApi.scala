@@ -1,24 +1,34 @@
 package com.sider.api.implementation
 
-import com.sider.api.KeyCommands
 import com.sider.network.Resp3TcpClient
-import com.sider.BlobString
-import java.nio.charset.StandardCharsets
-import com.sider.Resp3Serialization
-import com.sider.Identifiers.SimpleString
 import com.sider.Type
+import com.sider.SimpleError
+import com.sider.BlobError
+import com.sider.api.ResponseNotMappedError
+import com.sider.api.implementation.RedisApi.sendCommandWithGenericErrorHandler
+import com.sider.BlobString
 import com.sider.SimpleString
+import com.sider.api.KeyNotFound
+import com.sider.Resp3Array
+import com.sider.Resp3Serialization
+import com.sider.api.implementation.RedisApi.genericErrorHandler
 import com.sider.api.options.ExpireOption
+import com.sider.api.options.ListInsertPositionOption
 import com.sider.api.entities.ScanResponse
+import com.sider.api.RedisApiDefinition
+
 
 case class ScanResponseNotAsExpected(val msg: String, val cause: Throwable = null) extends Throwable(msg, cause) {}
+case class NotExistingOrEmptyList(val msg: String, val cause: Throwable = null) extends Throwable(msg, cause) {}
 
-class BasicKeyCommands(
+class RedisApi(
     val tcp: Resp3TcpClient
-) extends KeyCommands {
+) extends RedisApiDefinition {
 
   given global: Resp3TcpClient = tcp
 
+  /* Keys commands */
+  
   override def copy(
       source: String,
       dest: String,
@@ -269,4 +279,198 @@ class BasicKeyCommands(
     sendCommandWithGenericErrorHandler(Array("TYPE", key)) {
       case v: com.sider.SimpleString => v.value
     }
+
+
+
+  /* Strings commands */
+
+  override def append(key: String, value: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("APPEND", key, value)) {
+      case n: com.sider.Number => n.value
+    }
+
+  override def incr(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("INCR", key)) {
+      case v: com.sider.Number => v.value
+    }
+
+  override def incrBy(key: String, increment: Long): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("INCRBY", key, increment)) {
+      case v: com.sider.Number => v.value
+    }
+
+  override def incrByFloat(
+      key: String,
+      increment: Double
+  ): Either[Throwable, Double] =
+    sendCommandWithGenericErrorHandler(Array("INCRBYFLOAT", key, increment)) {
+      case v: BlobString => v.value map { _.toDouble }
+    }
+
+  override def get(key: String): Either[Throwable, String] =
+    sendCommandWithGenericErrorHandler(Array("GET", key)) {
+      case v: SimpleString   => v.value
+      case v: BlobString     => v.value
+      case v: com.sider.Null => Left(KeyNotFound())
+
+    }
+
+  override def strlen(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("STRLEN", key)) {
+      case v: com.sider.Number => v.value
+    }
+
+  override def decr(key: String): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("DECR", key)) {
+      case v: com.sider.Number => v.value
+
+    }
+
+  override def decrBy(key: String, decrement: Long): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("DECRBY", key, decrement)) {
+      case v: com.sider.Number => v.value
+    }
+
+  override def getEx(
+      key: String,
+      ex: Option[Long],
+      px: Option[Long],
+      exat: Option[Long],
+      pxat: Option[Long],
+      persist: Boolean
+  ): Either[Throwable, String] =
+    val command = Array(
+      Array("GETEX"),
+      Array(key),
+      ex.map(_.toString()).map(Array("EX", _)).getOrElse(null),
+      px.map(_.toString()).map(Array("PX", _)).getOrElse(null),
+      exat.map(_.toString()).map(Array("EXAT", _)).getOrElse(null),
+      pxat.map(_.toString()).map(Array("PXAT", _)).getOrElse(null),
+      if persist then Array("PERSIST") else null
+    )
+      .filter(_ != null)
+      .flatten
+
+    sendCommandWithGenericErrorHandler(command) { case v: BlobString =>
+      v.value
+    }
+
+  override def set(
+      key: String,
+      value: String,
+      ex: Option[Long],
+      px: Option[Long],
+      exat: Option[Long],
+      pxat: Option[Long],
+      nx: Boolean,
+      xx: Boolean,
+      keepttl: Boolean,
+      get: Boolean
+  ): Either[Throwable, String] =
+    val command = Array(
+      Array("SET"),
+      Array(key),
+      Array(value),
+      if nx then Array("NX") else null,
+      if xx then Array("XX") else null,
+      if get then Array("GET") else null,
+      ex.map(_.toString()).map(Array("EX", _)).getOrElse(null),
+      px.map(_.toString()).map(Array("PX", _)).getOrElse(null),
+      exat.map(_.toString()).map(Array("EXAT", _)).getOrElse(null),
+      pxat.map(_.toString()).map(Array("PXAT", _)).getOrElse(null),
+      if keepttl then Array("KEEPTTL") else null
+    )
+      .filter(_ != null)
+      .flatten
+
+    sendCommandWithGenericErrorHandler(command) {
+      case v: SimpleString => v.value
+      case v: BlobString   => v.value
+    }
+
+  override def mget(keys: String*): Either[Throwable, Seq[Any]] =
+    sendCommandWithGenericErrorHandler("MGET" +: keys.toArray) {
+      case v: Resp3Array => v.value
+    }
+
+  override def getDel(key: String): Either[Throwable, String] =
+    sendCommandWithGenericErrorHandler(Array("GETDEL", key)) {
+      case v: BlobString     => v.value
+      case v: com.sider.Null => Left(KeyNotFound())
+    }
+
+  override def mset(entries: Map[String, String]): Either[Throwable, String] =
+    val command = entries.toArray
+      .flatMap(e => Array(e._1, e._2))
+    sendCommandWithGenericErrorHandler("MSET" +: command) {
+      case v: com.sider.SimpleString => v.value
+    }
+
+  override def msetNx(entries: Map[String, String]): Either[Throwable, Long] =
+    val command = entries.toArray
+      .flatMap(e => Array(e._1, e._2))
+    sendCommandWithGenericErrorHandler("MSETNX" +: command) {
+      case v: com.sider.Number => v.value
+    }
+
+  override def setRange(
+      key: String,
+      offset: Long,
+      value: String
+  ): Either[Throwable, Long] =
+    sendCommandWithGenericErrorHandler(Array("SETRANGE", key, offset, value)) {
+      case v: com.sider.Number => v.value
+    }
+
+  override def getRange(
+      key: String,
+      start: Long,
+      end: Long
+  ): Either[Throwable, String] =
+    sendCommandWithGenericErrorHandler(Array("GETRANGE", key, start, end)) {
+      case v: BlobString => v.value
+    }
+
+
+  /* List commands */
+  
+  override def lindex(key: String, index: Long): Either[Throwable, String] = ???
+  override def linsert(key: String, position: ListInsertPositionOption, pivot: Long, element: String): Either[Throwable, Long] = ???
+  override def llen(key: String): Either[Throwable, Long] = sendCommandWithGenericErrorHandler(Array("LLEN", key)) {
+    case v: com.sider.Number => v.value 
+  }
+  override def lpush(key: String, elements: String*): Either[Throwable, Long] = sendCommandWithGenericErrorHandler("LPUSH" +: key +: elements.toArray) {
+      case v: com.sider.Number => v.value
+    }
+  override def lpop(key: String, count: Option[Long] = None): Either[Throwable, Seq[String]] =
+    var command = Array("LPOP", key)
+
+    command =
+      if count.isDefined then command :+ count.map(_.toString()).get else command
+
+    sendCommandWithGenericErrorHandler(command) { 
+      case v: com.sider.BlobString => v.value.map(Seq(_))
+      case v: com.sider.Resp3Array => v.value.asInstanceOf[Either[Throwable, Seq[String]]]
+      case v: com.sider.Null => Left(NotExistingOrEmptyList(s"Key $key does not exist or is an empty list"))
+    }
+}
+
+
+object RedisApi {
+  def genericErrorHandler[A]: PartialFunction[Type[?], Either[Throwable, A]] = {
+    case e: SimpleError => e.value.flatMap(error => Left(Throwable(error)))
+    case e: BlobError   => e.value.flatMap(error => Left(Throwable(error)))
+    case _              => Left(ResponseNotMappedError())
+  }
+
+  def sendCommandWithGenericErrorHandler[A](
+      command: Array[?]
+  )(
+      handler: PartialFunction[Type[?], Either[Throwable, A]]
+  )(using tcp: Resp3TcpClient) =
+    tcp
+      .sendAndWaitResponseSync(command map (_.toString()): _*)
+      .flatMap {
+        handler orElse genericErrorHandler
+      }
 }

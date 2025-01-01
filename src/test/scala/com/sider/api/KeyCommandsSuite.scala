@@ -26,9 +26,9 @@ class KeyCommandsSuite extends munit.FunSuite {
 
   test("EXISTS, COPY, DEL, TOUCH, TYPE, UNLINK") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.keys
+    val cmd = c.api
 
-    c.strings.set("foo", "bar")
+    c.api.set("foo", "bar")
     assertEquals(cmd.exists("foo"), Right(1L))
     assertEquals(cmd.copy("foo", "foo:1"), Right(1L))
     assertEquals(cmd.copy("foo", "foo:1"), Right(0L))
@@ -37,39 +37,39 @@ class KeyCommandsSuite extends munit.FunSuite {
     assertEquals(cmd.del("foo", "foo:1"), Right(2L))
     assertEquals(cmd.del("foo", "foo:1"), Right(0L))
 
-    c.strings.set("foo", "bar")
+    c.api.set("foo", "bar")
     assertEquals(cmd.type_("foo"), Right("string"))
     assertEquals(cmd.unlink("foo", "not_exists"), Right(1L))
   }
 
   test("DUMP, SERIALIZATION") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.keys
+    val cmd = c.api
 
-    c.strings.set("dump:foo", "bar")
+    c.api.set("dump:foo", "bar")
     val dumped = cmd.dump("dump:foo")
     assertEquals(cmd.del("dump:foo"), Right(1L))
     assertEquals(cmd.restore("dump:foo", dumped.getOrElse(Array.empty[Byte])), Right("OK"))
-    assertEquals(c.strings.get("dump:foo"), Right("bar"))
+    assertEquals(c.api.get("dump:foo"), Right("bar"))
 
     val dumped1 = cmd.dump("dump:foo").getOrElse(Array.empty[Byte])
     assertEquals(cmd.del("dump:foo"), Right(1L))
     
     assertEquals(cmd.restore("dump:foo", dumped1, ttl = Some(300L), replace = true, freq = Some(200L)),Right("OK"))
-    assertEquals(c.strings.get("dump:foo"), Right("bar"))
+    assertEquals(c.api.get("dump:foo"), Right("bar"))
   }
 
   test("EXPIRE* , TTL") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.keys
+    val cmd = c.api
 
-    c.strings.set("expire:foo", "bar")
+    c.api.set("expire:foo", "bar")
     assertEquals(cmd.ttl("expire:foo"), Right(-1L))
     assertEquals(cmd.ttl("expire:foo"), Right(-1L))
     assertEquals(cmd.ttl("expire:not_exists"), Right(-2L))
     assertEquals(cmd.ttl("expire:not_exists"), Right(-2L))
 
-    c.keys.expire("expire:foo", Int.MaxValue.toLong)
+    c.api.expire("expire:foo", Int.MaxValue.toLong)
     assert(cmd.ttl("expire:foo").exists(_ > 0))
     assert(cmd.pTtl("expire:foo").exists(_ > 0))
 
@@ -78,25 +78,25 @@ class KeyCommandsSuite extends munit.FunSuite {
     assert(cmd.ttl("expire:foo").exists(_ == -1))
     assert(cmd.pTtl("expire:foo").exists(_ == -1))
 
-    c.keys.pExpire("expire:foo", Int.MaxValue.toLong)
+    c.api.pExpire("expire:foo", Int.MaxValue.toLong)
     assert(cmd.ttl("expire:foo").exists(_ > 0))
     assert(cmd.pTtl("expire:foo").exists(_ > 0))
 
     val toNextMonth = Instant.now().plus(30, ChronoUnit.DAYS).getEpochSecond()
-    c.keys.expireAt("expire:foo", toNextMonth, Some(com.sider.api.options.XX()))
+    c.api.expireAt("expire:foo", toNextMonth, Some(com.sider.api.options.XX()))
     assertEquals(cmd.expireTime("expire:foo"), Right(toNextMonth))
 
     assertEquals(cmd.persist("expire:foo"), Right(1L))
 
-    c.keys.pExpireAt("expire:foo", toNextMonth * 1000)
+    c.api.pExpireAt("expire:foo", toNextMonth * 1000)
     assertEquals(cmd.pExpireTime("expire:foo"), Right(toNextMonth * 1000))
   }
 
   test("KEYS") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.keys
+    val cmd = c.api
 
-    c.strings.mset(Map("keys:a" -> "a", "keys:b" -> "b", "keys:c" -> "c", "keys-with-different-pattern:d" -> "d", "keys-with-different-pattern:?" -> "d"))
+    c.api.mset(Map("keys:a" -> "a", "keys:b" -> "b", "keys:c" -> "c", "keys-with-different-pattern:d" -> "d", "keys-with-different-pattern:?" -> "d"))
 
     assertEquals(cmd.keys("keys*").map(_.size), Right(5))
     assertEquals(cmd.keys("keys:*").map(_.size), Right(3))
@@ -106,9 +106,9 @@ class KeyCommandsSuite extends munit.FunSuite {
 
   test("OBJECT*") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.keys
+    val cmd = c.api
 
-    c.strings.set("object:a", "a")
+    c.api.set("object:a", "a")
 
     assertEquals(cmd.objectEncoding("object:a"), Right("embstr"))
     // OBJECT FREQ works only under specific configuration about LFU policies. This is why left is accepted in this test scenario
@@ -120,9 +120,9 @@ class KeyCommandsSuite extends munit.FunSuite {
 
   test("RANDOM, RENAME*") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.keys
+    val cmd = c.api
 
-    c.strings.set("rename:a", "a")
+    c.api.set("rename:a", "a")
 
     assert(cmd.randomKey().isRight)
 
@@ -134,10 +134,10 @@ class KeyCommandsSuite extends munit.FunSuite {
 
   test("SCAN") {
     val c = new RedisClient(port = Some(redisServer.getMappedPort(6379)))
-    val cmd = c.keys
+    val cmd = c.api
 
     /* Prepares a list of keys for this test scenario */
-    (1 to 100) map(_.toString()) map { e => c.strings.set(s"scan:$e", e) }
+    (1 to 100) map(_.toString()) map { e => c.api.set(s"scan:$e", e) }
 
     /* Utility functions that can be used to do a complete scan */
     def scanAll(start: String, count: Int): Int = {

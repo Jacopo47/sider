@@ -6,7 +6,9 @@ import com.sider.SimpleError
 import com.sider.BlobError
 import com.sider.network.Resp3TcpClient
 import com.sider.api.options.ExpireOption
+import com.sider.api.options.ListInsertPositionOption
 import com.sider.api.entities.ScanResponse
+
 
 /**
  * These API aim to be transparent as much as possible. So, until something
@@ -14,31 +16,9 @@ import com.sider.api.entities.ScanResponse
  * utilities in order to call "plain" Redis command. Refer to Redis' commands
  * documentation for details about command's behavior.
  */
-trait RedisApi {
-  val strings: StringCommands
-  val keys: KeyCommands
-}
+trait RedisApiDefinition {
 
-sealed trait RedisCommandsByType {
-  def genericErrorHandler[A]: PartialFunction[Type[?], Either[Throwable, A]] = {
-    case e: SimpleError => e.value.flatMap(error => Left(Throwable(error)))
-    case e: BlobError   => e.value.flatMap(error => Left(Throwable(error)))
-    case _              => Left(ResponseNotMappedError())
-  }
-
-  def sendCommandWithGenericErrorHandler[A](
-      command: Array[?]
-  )(
-      handler: PartialFunction[Type[?], Either[Throwable, A]]
-  )(using tcp: Resp3TcpClient) =
-    tcp
-      .sendAndWaitResponseSync(command map (_.toString()): _*)
-      .flatMap {
-        handler orElse genericErrorHandler
-      }
-}
-
-trait KeyCommands extends RedisCommandsByType {
+  /* Keys commands */
   def copy(
       source: String,
       dest: String,
@@ -105,15 +85,14 @@ trait KeyCommands extends RedisCommandsByType {
   def unlink(key: String*): Either[Throwable, Long]
   def wait_ = ???
   def waitAof = ???
-}
 
-/**
- * </p> Note: </p>
- *   1. LCS not supported right now. </p> 2. SUBSTR is not covered because
- *      deprecated in favour of GETRANGE. </p> 3. SETEX, GETSET, SETNX, PSETEX
- *      not covered in favour of SET with related flags </p>
- */
-trait StringCommands extends RedisCommandsByType {
+  /*
+    * Strings commands:
+    * </p> Note: </p>
+    *   1. LCS not supported right now. </p> 2. SUBSTR is not covered because
+    *      deprecated in favour of GETRANGE. </p> 3. SETEX, GETSET, SETNX, PSETEX
+    *      not covered in favour of SET with related flags </p>
+    */
 
   def append(key: String, value: String): Either[Throwable, Long]
 
@@ -159,5 +138,16 @@ trait StringCommands extends RedisCommandsByType {
   def mget(keys: String*): Either[Throwable, Seq[Any]]
   def mset(entries: Map[String, String]): Either[Throwable, String]
   def msetNx(entries: Map[String, String]): Either[Throwable, Long]
+
+
+  /* List commands */
+
+  def lindex(key: String, index: Long): Either[Throwable, String]
+  def linsert(key: String, position: ListInsertPositionOption, pivot: Long, element: String): Either[Throwable, Long]
+  def llen(key: String): Either[Throwable, Long]
+
+  def lpush(key: String, elements: String*): Either[Throwable, Long]
+  def lpop(key: String, count: Option[Long] = None): Either[Throwable, Seq[String]]
+  
 
 }
